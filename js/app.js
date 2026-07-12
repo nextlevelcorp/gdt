@@ -327,6 +327,11 @@
     else if (r.page === "lesson") { content.innerHTML = renderLesson(r.idx); bindQuiz(r.idx); }
     else if (r.page === "symbols") { content.innerHTML = renderSymbols(); bindSymbols(); }
     else if (r.page === "exam") { content.innerHTML = renderExam(); bindExam(); }
+    if (window.GDT_WIDGETS) GDT_WIDGETS.mountAll(content, state.lang);
+    // re-trigger entry animation
+    content.classList.remove("content-anim");
+    void content.offsetWidth;
+    content.classList.add("content-anim");
     renderSidebar();
     renderTopbar();
     closeSidebar();

@@ -121,6 +121,7 @@
           "</ol>" +
           H.dia(D.zoneCompare({ a: "± 0,1 koordinat bölgesi", b: "Pozisyon ⌀0,283 bölgesi" }),
             "Aynı fonksiyonel gereksinim: kare ± bölgesi (solda) ile köşelerinden geçen silindirik pozisyon bölgesi (sağda). Yuvarlak bölge, gerçekte iyi olan parçaların %57 fazlasını kabul eder.") +
+          H.widget("zoneCompare") +
           H.box("warn", UI.warning,
             "<p>GD&T, ± toleransları her yerde <strong>kaldırmaz</strong> — boyut ölçüleri (örn. ⌀10 ±0,1) yine ± ile verilir. GD&T yalnızca <em>ilişkiler</em> için ±'nin yerini alır: unsurların nerede olduğu, nasıl yönlendiği ve hangi şekle sahip olduğu.</p>")
       },
@@ -206,6 +207,7 @@
           "<ul><li>Her yeri MMC'de olan bir pim <strong>mükemmel doğru</strong> olmalıdır.</li>" +
           "<li>MMC'den 0,1 küçük yapılırsa, 0,1'e kadar eğilebilir ve yine zarfa sığar.</li>" +
           "<li>Kural 1 <em>yalnızca</em> tek tek boyutlu unsurlara uygulanır — iki unsuru birbirine ilişkilendirmez.</li></ul>" +
+          H.widget("rule1") +
           H.box("warn", UI.warning, "<p>ISO sisteminde Kural 1 varsayılan olarak <strong>uygulanmaz</strong> (ISO 8015: bağımsızlık prensibi). ISO resimlerinde zarf gereksinimi Ⓔ modifiyesi ile açıkça belirtilmelidir. Bu, en önemli ASME/ISO farkıdır.</p>")
       },
       {
@@ -284,6 +286,7 @@
             [F([[{ sym: "profileSurface" }], ["0.4"], ["A"], ["B"]]), "Tüm yüzey, gerçek profil merkezli 0,4 genişliğinde, datum A ve B'ye göre konumlanmış bölge içinde kalmalıdır."],
             [F([[{ sym: "position" }], [{ sym: "diameter" }, "0.1"], ["A"], ["B"]]), "Eksen, A ve B'den gerçek pozisyonda ⌀0,1'lik silindirik bölge içinde kalmalıdır, RFS (modifiye yok)."]
           ]) +
+          H.widget("fcfBuilder") +
           H.box("key", UI.keyPoints,
             "<ul><li>FCF soldan → sağa okunur: sembol, bölge (⌀? değer, modifiye?), öncelik sırasıyla datumlar.</li>" +
             "<li>Değerin önündeki ⌀ = silindirik bölge; ⌀ yoksa = iki paralel düzlem/çizgi.</li>" +
@@ -328,7 +331,8 @@
           "<li><strong>İkincil (B)</strong> — min. <strong>2 nokta</strong> ile dayanır → 1 öteleme + 1 dönme kilitlenir.</li>" +
           "<li><strong>Üçüncül (C)</strong> — min. <strong>1 nokta</strong> ile temas eder → son öteleme kilitlenir.</li>" +
           "</ul>" +
-          "<p>Silindirik datum unsurları farklı çalışır: bir datum <strong>ekseni</strong> (delikten veya milden; ayna/malafa ile benzetilir) tek başına 2 öteleme + 2 dönmeyi kilitler; bu yüzden eksen birincil + alın ikincil, tornalanmış parçalar için çok yaygın bir DRF'dir.</p>"
+          "<p>Silindirik datum unsurları farklı çalışır: bir datum <strong>ekseni</strong> (delikten veya milden; ayna/malafa ile benzetilir) tek başına 2 öteleme + 2 dönmeyi kilitler; bu yüzden eksen birincil + alın ikincil, tornalanmış parçalar için çok yaygın bir DRF'dir.</p>" +
+          H.widget("datum321")
       },
       {
         h: "Datum sırası neden önemli?",
@@ -398,6 +402,7 @@
           H.fcfDemo(F([[{ sym: "flatness" }], ["0.1"]])) +
           "<p><strong>Yüzeyin tamamı</strong>, 0,1 aralıklı iki paralel düzlem arasında kalmalıdır. Düzlemler serbesttir — başka hiçbir şeye paralel değildirler; yüzeyi mümkün olan en dar şekilde sandviçlerler.</p>" +
           H.dia(D.flatness(), "Düzlemsellik: tüm yüzey, 0,1 aralıklı iki paralel düzlem arasına sığmalıdır. Bölgenin yönelimi serbesttir.") +
+          H.widget("flatness") +
           "<p>Tipik kullanım: sızdırmazlık yüzeyleri (contalar), montaj yüzeyleri ve en önemlisi <strong>birincil datum unsurları</strong> — datum unsuru A'daki düzlemsellik, parçanın kararlı oturmasını garanti eder.</p>" +
           H.box("warn", UI.warning, "<p>Düzlemsellik, paralellik <strong>değildir</strong>: düzlemsellik diğer tüm unsurları yok sayar; paralellik (Ders 6) yüzeyin yönelimini bir datuma bağlar <em>ve</em> dolaylı olarak düzlemselliğini de kontrol eder.</p>")
       },
@@ -464,7 +469,8 @@
           H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]])) +
           "<p>Yüzey, datum A'ya <strong>tam 90°</strong> olan, 0,1 aralıklı iki paralel düzlem arasında kalmalıdır.</p>" +
           H.dia(D.perpendicularity(), "Diklik: duvar yüzeyi, datum A'ya tam 90° tutulan 0,1 genişliğindeki bölgeye sığmalıdır. Bölge sağa-sola kayabilir (konum kontrolü yok).") +
-          "<p>⌀ ile bir delik eksenine uygulandığında — örn. " + F([[{ sym: "perpendicularity" }], [{ sym: "diameter" }, "0.05", { mod: "M" }], ["A"]]) + " — eksen, A'ya dik ⌀0,05'lik silindir içinde kalmalıdır. Bu, pim ve cıvata delikleri için klasik gösterimdir; genellikle fonksiyonel mastarla kontrol edilebilsin diye Ⓜ ile verilir.</p>"
+          "<p>⌀ ile bir delik eksenine uygulandığında — örn. " + F([[{ sym: "perpendicularity" }], [{ sym: "diameter" }, "0.05", { mod: "M" }], ["A"]]) + " — eksen, A'ya dik ⌀0,05'lik silindir içinde kalmalıdır. Bu, pim ve cıvata delikleri için klasik gösterimdir; genellikle fonksiyonel mastarla kontrol edilebilsin diye Ⓜ ile verilir.</p>" +
+          H.widget("orientation")
       },
       {
         h: "Paralellik ∥",
@@ -532,7 +538,8 @@
       {
         h: "Ⓜ ile pozisyon — montaj için tasarlandı",
         html:
-          "<p>Pozisyon en güçlü hâline MMC modifiyesiyle kavuşur. " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"]]) + " şu demektir: delik MMC'deyken ⌀0,2'lik bölge; deliğin her fazladan büyüklüğü <strong>bonus tolerans</strong> ekler (ayrıntılar Ders 10'da). Mühendislik mantığı: daha büyük delik merkezden daha fazla kaçabilir ve cıvata yine geçer. Fonksiyonel olarak tam isabet — üstelik sabit bir <strong>geçer mastarın</strong> tüm gereksinimi tek dalışta doğrulamasına izin verir.</p>"
+          "<p>Pozisyon en güçlü hâline MMC modifiyesiyle kavuşur. " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"]]) + " şu demektir: delik MMC'deyken ⌀0,2'lik bölge; deliğin her fazladan büyüklüğü <strong>bonus tolerans</strong> ekler (ayrıntılar Ders 10'da). Mühendislik mantığı: daha büyük delik merkezden daha fazla kaçabilir ve cıvata yine geçer. Fonksiyonel olarak tam isabet — üstelik sabit bir <strong>geçer mastarın</strong> tüm gereksinimi tek dalışta doğrulamasına izin verir.</p>" +
+          H.widget("position")
       },
       {
         h: "Eski kontroller: eşmerkezlilik ◎ ve simetri ⌯",
@@ -572,7 +579,8 @@
         html:
           "<p>Profil kontrolleri, gerçek yüzeyi <span class='term'>gerçek profille</span> — temel ölçülerin (veya CAD modelinin) tanımladığı tam şekille — karşılaştırır. Tolerans bir bant oluşturur: belirtilen genişlikte bir bölge içerecek şekilde ofsetlenmiş, <strong>gerçek profilin iki kopyası</strong>.</p>" +
           H.fcfDemo(F([[{ sym: "profileSurface" }], ["0.4"], ["A"], ["B"]])) +
-          H.dia(D.profileSurface(), "Yüzey profili 0,4: gerçek yüzey (düz çizgi), gerçek profilden (orta noktalı-kesikli) ±0,2 ofsetlenmiş iki eğrinin oluşturduğu bandın içinde kalmalıdır."),
+          H.dia(D.profileSurface(), "Yüzey profili 0,4: gerçek yüzey (düz çizgi), gerçek profilden (orta noktalı-kesikli) ±0,2 ofsetlenmiş iki eğrinin oluşturduğu bandın içinde kalmalıdır.") +
+          H.widget("profile"),
       },
       {
         h: "Çizgi ve yüzey",
@@ -622,7 +630,8 @@
         h: "Dönen parça problemi",
         html:
           "<p>Miller, kasnaklar, dişliler ve dönen her şey için fonksiyonel soru şudur: <em>parça yatak ekseni etrafında dönerken bu yüzey ne kadar yalpalar?</em> Salgı tam olarak buna cevap verir ve tanımı ölçümün ta kendisidir: parçayı datum ekseni etrafında 360° döndürün ve yüzeydeki komparatörü okuyun. Okuma (FIM — tam ibre hareketi) toleransı aşmamalıdır.</p>" +
-          H.dia(D.runout(), "Salgı ölçümü: parça datum muylusu A'dan tutulur (örn. V-yataklarında veya aynada), 360° döndürülür; kontrol edilen yüzeydeki komparatör okuması 0,05 içinde kalmalıdır."),
+          H.dia(D.runout(), "Salgı ölçümü: parça datum muylusu A'dan tutulur (örn. V-yataklarında veya aynada), 360° döndürülür; kontrol edilen yüzeydeki komparatör okuması 0,05 içinde kalmalıdır.") +
+          H.widget("runout"),
       },
       {
         h: "Dairesel ↗ ve toplam ⌰ salgı",
@@ -688,6 +697,7 @@
             "<p>Delik ⌀10,0–10,3 ve " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"], ["C"]]) + "</p>" +
             H.dia(D.bonus({ size: "Gerçek delik ⌀", geo: "Belirtilen tol.", bonus: "Bonus", total: "Toplam pozisyon tol." }), "Bonus tolerans: delik MMC'nin (⌀10,0) ötesine her 0,1 büyüdüğünde 0,1 pozisyon toleransı eklenir.") +
             "<p>Bu neden meşrudur? Çünkü fonksiyon <em>cıvatanın geçmesidir</em>: daha büyük delik gerçekten daha fazla konum hatasını tolere eder. Bonus, sıfır fonksiyonel riskle bedava imalat toleransıdır.</p>") +
+          H.widget("position") +
           H.box("warn", UI.warning, "<p>Bonus, <em>toleranslanan unsurun kendi boyutundan</em> gelir. Ⓜ ile referans verilen boyutlu bir datum unsuru farklı bir şey verir — <strong>datum kayması</strong> (parçanın tamamı mastar içinde oynayabilir) — bu, bonus gibi unsur başına eklenmez.</p>")
       },
       {

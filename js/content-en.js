@@ -22,6 +22,9 @@
       });
       return h + "</tbody></table></div>";
     },
+    widget: function (name) {
+      return '<div class="widget-mount" data-widget="' + name + '"></div>';
+    },
     fcfDemo: function (fcfHtml, labels) {
       var h = '<div class="fcf-demo">' + fcfHtml;
       if (labels && labels.length) {
@@ -153,6 +156,7 @@
           "</ol>" +
           H.dia(D.zoneCompare({ a: "± 0.1 coordinate zone", b: "Position ⌀0.283 zone" }),
             "The same functional requirement: the square ± zone (left) vs the cylindrical position zone through its corners (right). The round zone accepts 57% more genuinely good parts.") +
+          H.widget("zoneCompare") +
           H.box("warn", UI.warning,
             "<p>GD&T does <strong>not</strong> replace ± tolerances everywhere — size dimensions (e.g. ⌀10 ±0.1) still use them. GD&T replaces ± only for <em>relationships</em>: where features are, how they are oriented, and what shape they have.</p>")
       },
@@ -238,6 +242,7 @@
           "<ul><li>A pin at MMC everywhere must be <strong>perfectly straight</strong>.</li>" +
           "<li>Made 0.1 below MMC, it may bend up to 0.1 and still fit the envelope.</li>" +
           "<li>Rule #1 applies to individual features of size <em>only</em> — it does not relate two features to each other.</li></ul>" +
+          H.widget("rule1") +
           H.box("warn", UI.warning, "<p>In the ISO system Rule #1 does <strong>not</strong> apply by default (ISO 8015: independence principle). On ISO drawings the envelope requirement must be invoked explicitly with the Ⓔ modifier. This is the single most important ASME/ISO difference.</p>")
       },
       {
@@ -316,6 +321,7 @@
             [F([[{ sym: "profileSurface" }], ["0.4"], ["A"], ["B"]]), "Entire surface must lie in a 0.4 wide zone centered on the true profile, located relative to datums A and B."],
             [F([[{ sym: "position" }], [{ sym: "diameter" }, "0.1"], ["A"], ["B"]]), "Axis must lie in a ⌀0.1 cylindrical zone at true position from A and B, RFS (no modifier)."]
           ]) +
+          H.widget("fcfBuilder") +
           H.box("key", UI.keyPoints,
             "<ul><li>FCF reads left → right: symbol, zone (⌀? value, modifier?), datums in precedence order.</li>" +
             "<li>⌀ before the value = cylindrical zone; no ⌀ = two parallel planes/lines.</li>" +
@@ -360,7 +366,8 @@
           "<li><strong>Secondary (B)</strong> — pushed against it with min. <strong>2 points</strong> → locks 1 translation + 1 rotation.</li>" +
           "<li><strong>Tertiary (C)</strong> — touched with min. <strong>1 point</strong> → locks the last translation.</li>" +
           "</ul>" +
-          "<p>Cylindrical datum features work differently: a datum <strong>axis</strong> (from a hole or shaft, simulated by a chuck/mandrel) locks 2 translations + 2 rotations at once, so an axis primary + face secondary is a very common DRF for turned parts.</p>"
+          "<p>Cylindrical datum features work differently: a datum <strong>axis</strong> (from a hole or shaft, simulated by a chuck/mandrel) locks 2 translations + 2 rotations at once, so an axis primary + face secondary is a very common DRF for turned parts.</p>" +
+          H.widget("datum321")
       },
       {
         h: "Why datum order matters",
@@ -430,6 +437,7 @@
           H.fcfDemo(F([[{ sym: "flatness" }], ["0.1"]])) +
           "<p>The <strong>entire surface</strong> must lie between two parallel planes 0.1 apart. The planes float — they are not parallel to anything else, they just sandwich the surface as tightly as possible.</p>" +
           H.dia(D.flatness(), "Flatness: the whole surface must fit between two parallel planes 0.1 apart. The zone's orientation is free.") +
+          H.widget("flatness") +
           "<p>Typical uses: sealing faces (gaskets), mounting faces, and above all <strong>primary datum features</strong> — a flatness callout on datum feature A guarantees the part sits stably.</p>" +
           H.box("warn", UI.warning, "<p>Flatness is <strong>not</strong> parallelism: flatness ignores every other feature; parallelism (Lesson 6) ties the surface's orientation to a datum <em>and</em> incidentally controls its flatness too.</p>")
       },
@@ -496,7 +504,8 @@
           H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]])) +
           "<p>The surface must lie between two parallel planes 0.1 apart that are <strong>exactly 90°</strong> to datum A.</p>" +
           H.dia(D.perpendicularity(), "Perpendicularity: the wall surface must fit inside a 0.1-wide zone held exactly 90° to datum A. The zone can slide left–right (no location control).") +
-          "<p>Applied to a hole's axis with ⌀ — e.g. " + F([[{ sym: "perpendicularity" }], [{ sym: "diameter" }, "0.05", { mod: "M" }], ["A"]]) + " — the axis must stay in a ⌀0.05 cylinder perpendicular to A. This is the classic callout for dowel and bolt holes, often with Ⓜ so a functional gauge can check it.</p>"
+          "<p>Applied to a hole's axis with ⌀ — e.g. " + F([[{ sym: "perpendicularity" }], [{ sym: "diameter" }, "0.05", { mod: "M" }], ["A"]]) + " — the axis must stay in a ⌀0.05 cylinder perpendicular to A. This is the classic callout for dowel and bolt holes, often with Ⓜ so a functional gauge can check it.</p>" +
+          H.widget("orientation")
       },
       {
         h: "Parallelism ∥",
@@ -564,7 +573,8 @@
       {
         h: "Position with Ⓜ — designed for assembly",
         html:
-          "<p>Position is most powerful with the MMC modifier. " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"]]) + " means: ⌀0.2 zone when the hole is at MMC; every bit of extra hole size adds <strong>bonus tolerance</strong> (details in Lesson 10). The engineering logic: a bigger hole can be further off-center and the bolt still fits. Functionally exact — and it lets a fixed <strong>go-gauge</strong> verify the whole requirement in one plunge.</p>"
+          "<p>Position is most powerful with the MMC modifier. " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"]]) + " means: ⌀0.2 zone when the hole is at MMC; every bit of extra hole size adds <strong>bonus tolerance</strong> (details in Lesson 10). The engineering logic: a bigger hole can be further off-center and the bolt still fits. Functionally exact — and it lets a fixed <strong>go-gauge</strong> verify the whole requirement in one plunge.</p>" +
+          H.widget("position")
       },
       {
         h: "Legacy controls: concentricity ◎ and symmetry ⌯",
@@ -604,7 +614,8 @@
         html:
           "<p>Profile controls compare the real surface with the <span class='term'>true profile</span> — the exact shape defined by basic dimensions (or the CAD model). The tolerance creates a band: <strong>two copies of the true profile</strong>, offset to contain a zone of the stated width.</p>" +
           H.fcfDemo(F([[{ sym: "profileSurface" }], ["0.4"], ["A"], ["B"]])) +
-          H.dia(D.profileSurface(), "Profile of a surface 0.4: the real surface (solid) must stay inside a band of two curves offset ±0.2 from the true profile (center dash-dot)."),
+          H.dia(D.profileSurface(), "Profile of a surface 0.4: the real surface (solid) must stay inside a band of two curves offset ±0.2 from the true profile (center dash-dot).") +
+          H.widget("profile"),
       },
       {
         h: "Line vs. surface",
@@ -654,7 +665,8 @@
         h: "The rotating-part problem",
         html:
           "<p>For shafts, pulleys, gears and anything that spins, the functional question is: <em>how much does this surface wobble when the part rotates about its bearing axis?</em> Runout answers exactly that, and its definition <strong>is</strong> the measurement: rotate the part 360° about the datum axis and read a dial indicator on the surface. The reading (FIM — full indicator movement) must not exceed the tolerance.</p>" +
-          H.dia(D.runout(), "Runout measurement: part held on datum journal A (e.g. in V-blocks or a chuck), rotated 360°; the indicator reading on the checked surface must stay within 0.05."),
+          H.dia(D.runout(), "Runout measurement: part held on datum journal A (e.g. in V-blocks or a chuck), rotated 360°; the indicator reading on the checked surface must stay within 0.05.") +
+          H.widget("runout"),
       },
       {
         h: "Circular ↗ vs. total ⌰ runout",
@@ -720,6 +732,7 @@
             "<p>Hole ⌀10.0–10.3 with " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.2", { mod: "M" }], ["A"], ["B"], ["C"]]) + "</p>" +
             H.dia(D.bonus({ size: "Actual hole ⌀", geo: "Stated tol", bonus: "Bonus", total: "Total position tol" }), "Bonus tolerance: every 0.1 the hole grows beyond MMC (⌀10.0) adds 0.1 of position tolerance.") +
             "<p>Why is this legitimate? Because function is <em>bolt passes through</em>: a larger hole genuinely tolerates more location error. Bonus is free manufacturing tolerance with zero functional risk.</p>") +
+          H.widget("position") +
           H.box("warn", UI.warning, "<p>Bonus comes from the <em>toleranced feature's own size</em>. A datum feature of size referenced at Ⓜ gives something different — <strong>datum shift</strong> (the whole part may move within the gauge) — which is not added per-feature like bonus.</p>")
       },
       {
