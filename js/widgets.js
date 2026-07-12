@@ -787,6 +787,236 @@
     }
   };
 
+  /* ================================================================
+   * 11. datumPick — assign A/B/C to the surfaces of a bracket
+   * ================================================================ */
+  W.datumPick = {
+    i18n: {
+      en: {
+        title: "Design task: choose the datums", badge: "interactive",
+        sub: "This bracket is bolted to a machine base on its large face, slides along a guide rail on its long edge, and is pushed against a stop on its short edge. Click the features in the order you would reference them: first click = datum A, then B, then C.",
+        face: "mounting face (4 bolts)", rail: "guide rail", railEdge: "long edge on rail",
+        stop: "stop", stopEdge: "short edge on stop", hole: "⌀4 cosmetic hole",
+        reset: "Reset",
+        fb: {
+          faceA: "✓ A — the bolted face carries the part: largest, most stable contact (3 points). The natural primary.",
+          faceX: "✗ The mounting face is the foundation the part sits on — it should be primary (A), not {L}.",
+          railB: "✓ B — the rail edge guides the part with 2 points of contact: exactly what a secondary datum does.",
+          railA: "✗ An edge cannot seat the part stably. Primary should be the large bolted face (3 points), the rail edge fits secondary.",
+          railC: "✗ The rail edge constrains 2 degrees of freedom — it deserves secondary (B), not tertiary.",
+          stopC: "✓ C — the stop touches at 1 point and removes the last degree of freedom: a textbook tertiary datum.",
+          stopX: "✗ The stop edge offers only 1 point of contact — it can only ever be the tertiary datum (C).",
+          holeX: "✗ That hole touches nothing in the assembly. A feature that doesn't locate the part makes a poor datum."
+        },
+        allOk: "Perfect DRF — |A|B|C| copies exactly how the part is located: 3 points + 2 points + 1 point. Your fixture designs itself.",
+        someBad: "Not quite — datum order must copy how the part is actually located in the assembly. Press Reset and try again."
+      },
+      tr: {
+        title: "Tasarım görevi: datumları seçin", badge: "interaktif",
+        sub: "Bu braket geniş yüzeyinden makine gövdesine cıvatalanıyor, uzun kenarı bir kızak boyunca kayıyor ve kısa kenarı bir dayamaya yaslanıyor. Unsurlara referans vereceğiniz sırayla tıklayın: ilk tıklama = datum A, sonra B, sonra C.",
+        face: "montaj yüzeyi (4 cıvata)", rail: "kızak", railEdge: "kızağa yaslanan uzun kenar",
+        stop: "dayama", stopEdge: "dayamaya yaslanan kısa kenar", hole: "⌀4 kozmetik delik",
+        reset: "Sıfırla",
+        fb: {
+          faceA: "✓ A — cıvatalanan yüzey parçayı taşır: en büyük, en kararlı temas (3 nokta). Doğal birincil datum.",
+          faceX: "✗ Montaj yüzeyi parçanın oturduğu temeldir — {L} değil, birincil (A) olmalıdır.",
+          railB: "✓ B — kızak kenarı parçayı 2 temas noktasıyla yönlendirir: ikincil datumun tam görevi.",
+          railA: "✗ Bir kenar parçayı kararlı şekilde oturtamaz. Birincil, geniş cıvatalı yüzey (3 nokta) olmalı; kızak kenarı ikincile uygundur.",
+          railC: "✗ Kızak kenarı 2 serbestlik derecesini kısıtlar — üçüncül değil, ikincil (B) olmayı hak eder.",
+          stopC: "✓ C — dayama 1 noktadan temas eder ve son serbestlik derecesini alır: ders kitabı gibi bir üçüncül datum.",
+          stopX: "✗ Dayama kenarı yalnızca 1 temas noktası sunar — ancak üçüncül datum (C) olabilir.",
+          holeX: "✗ O delik montajda hiçbir şeye temas etmiyor. Parçayı konumlandırmayan bir unsur kötü bir datumdur."
+        },
+        allOk: "Mükemmel DRF — |A|B|C| parçanın konumlanma şeklini birebir kopyalıyor: 3 nokta + 2 nokta + 1 nokta. Fikstürünüz kendini tasarlıyor.",
+        someBad: "Tam değil — datum sırası, parçanın montajda gerçekte nasıl konumlandığını kopyalamalıdır. Sıfırla'ya basıp yeniden deneyin."
+      }
+    },
+    mount: function (c, T, lang) {
+      var f = frame(c, "📐", T.title, T.sub, T.badge);
+      var svg = svgEl(460, 300,
+        // rail (hatched strip along bottom long edge)
+        '<rect x="80" y="228" width="300" height="14" fill="none" class="d-soft" stroke-width="1.2"/>' +
+        Array.apply(null, Array(15)).map(function (_, i) {
+          var x = 84 + i * 20;
+          return '<line x1="' + x + '" y1="242" x2="' + (x + 10) + '" y2="228" class="d-soft" stroke-width="1"/>';
+        }).join("") +
+        '<text x="230" y="262" font-size="11" text-anchor="middle" class="d-softtext">' + T.rail + "</text>" +
+        // stop block on the short (left) edge
+        '<rect x="46" y="100" width="18" height="80" fill="none" class="d-soft" stroke-width="1.2"/>' +
+        '<line x1="46" y1="180" x2="64" y2="100" class="d-soft" stroke-width="1"/>' +
+        '<text x="55" y="94" font-size="11" text-anchor="middle" class="d-softtext">' + T.stop + "</text>" +
+        // plate
+        '<rect x="80" y="50" width="300" height="170" fill="none" class="d-stroke" stroke-width="2"/>' +
+        // bolts on the face
+        [[130, 85], [330, 85], [130, 185], [330, 185]].map(function (p) {
+          return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="9" fill="none" class="d-soft" stroke-width="1.4"/>' +
+            '<line x1="' + (p[0] - 5) + '" y1="' + (p[1] - 5) + '" x2="' + (p[0] + 5) + '" y2="' + (p[1] + 5) + '" class="d-soft" stroke-width="1"/>' +
+            '<line x1="' + (p[0] + 5) + '" y1="' + (p[1] - 5) + '" x2="' + (p[0] - 5) + '" y2="' + (p[1] + 5) + '" class="d-soft" stroke-width="1"/>';
+        }).join("") +
+        // decoy hole
+        '<circle cx="305" cy="130" r="7" fill="none" class="d-stroke" stroke-width="1.6"/>' +
+        '<text x="305" y="115" font-size="10" text-anchor="middle" class="d-softtext">' + T.hole + "</text>" +
+        // clickable hit areas
+        '<rect id="hit-face" x="105" y="105" width="150" height="70" class="d-zone" rx="8" style="cursor:pointer"/>' +
+        '<text x="180" y="145" font-size="11" text-anchor="middle" class="d-softtext" pointer-events="none">' + T.face + "</text>" +
+        '<rect id="hit-rail" x="80" y="210" width="300" height="16" class="d-zone" style="cursor:pointer"/>' +
+        '<text x="230" y="205" font-size="10" text-anchor="middle" class="d-softtext" pointer-events="none">' + T.railEdge + "</text>" +
+        '<rect id="hit-stop" x="72" y="50" width="16" height="170" class="d-zone" style="cursor:pointer"/>' +
+        '<rect id="hit-hole" x="291" y="116" width="28" height="28" fill="transparent" style="cursor:pointer"/>' +
+        // datum flag slots (filled on click)
+        '<g id="flags"></g>'
+      );
+      f.stage.appendChild(svg);
+      var flags = svg.querySelector("#flags");
+      var fbList = h("div", { class: "wfb" });
+      var v = h("span", { class: "wverdict" });
+      f.readout.appendChild(v);
+      c.appendChild(fbList);
+      var bReset = h("button", { class: "btn ghost wbtn" }, T.reset);
+      f.controls.appendChild(bReset);
+
+      var flagPos = { face: [180, 168], rail: [395, 218], stop: [80, 38], hole: [330, 130] };
+      var picks;
+      function reset() {
+        picks = [];
+        flags.innerHTML = "";
+        fbList.innerHTML = "";
+        v.className = "wverdict"; v.textContent = "";
+        ["face", "rail", "stop", "hole"].forEach(function (k) {
+          var el = svg.querySelector("#hit-" + k);
+          el.setAttribute("class", "d-zone");
+          el.style.cursor = "pointer";
+        });
+      }
+      function feedback(key, L) {
+        var fb = T.fb, ok, msg;
+        if (key === "face") { ok = L === "A"; msg = ok ? fb.faceA : fb.faceX.replace("{L}", L); }
+        else if (key === "rail") { ok = L === "B"; msg = L === "B" ? fb.railB : (L === "A" ? fb.railA : fb.railC); }
+        else if (key === "stop") { ok = L === "C"; msg = ok ? fb.stopC : fb.stopX; }
+        else { ok = false; msg = fb.holeX; }
+        return { ok: ok, msg: "<b>" + L + ":</b> " + msg };
+      }
+      function pick(key) {
+        if (picks.length >= 3 || picks.some(function (p) { return p.key === key; })) return;
+        var L = ["A", "B", "C"][picks.length];
+        var r = feedback(key, L);
+        picks.push({ key: key, ok: r.ok });
+        var p = flagPos[key];
+        flags.innerHTML +=
+          '<g><rect x="' + (p[0] - 11) + '" y="' + (p[1] - 11) + '" width="22" height="22" fill="none" class="' + (r.ok ? "d-good" : "d-bad") + '" stroke-width="2"/>' +
+          '<text x="' + p[0] + '" y="' + (p[1] + 5) + '" font-size="13" font-weight="700" text-anchor="middle">' + L + "</text></g>";
+        var hit = svg.querySelector("#hit-" + key);
+        hit.setAttribute("class", r.ok ? "d-good" : "d-bad");
+        hit.setAttribute("fill", "none"); hit.setAttribute("stroke-width", "2");
+        hit.style.cursor = "default";
+        var line = h("div", { class: "wfb-line " + (r.ok ? "pass" : "fail") }, r.msg);
+        fbList.appendChild(line);
+        if (picks.length === 3) {
+          var all = picks.every(function (x) { return x.ok; });
+          verdict(v, all, T.allOk, T.someBad);
+        }
+      }
+      ["face", "rail", "stop", "hole"].forEach(function (k) {
+        svg.querySelector("#hit-" + k).addEventListener("click", function () { pick(k); });
+      });
+      bReset.addEventListener("click", reset);
+      reset();
+    }
+  };
+
+  /* ================================================================
+   * 12. fastener — floating / fixed fastener formula calculator
+   * ================================================================ */
+  W.fastener = {
+    i18n: {
+      en: {
+        title: "Fastener formula calculator", badge: "interactive",
+        sub: "The designer's most-used calculation: how much position tolerance can the clearance holes get? Set the fastener and hole MMC sizes, and switch between a floating joint (bolt + nut through two clearance holes) and a fixed one (fastener threaded or pressed into the second part).",
+        floating: "Floating (bolt + nut)", fixed: "Fixed (threaded)",
+        fLab: "Fastener MMC ⌀F", hLab: "Hole MMC ⌀H",
+        formula: "Formula", perPart: "Position tolerance for each part",
+        clr: "clearance / side",
+        bad: "H ≤ F — the fastener cannot pass through even a perfectly positioned hole!",
+        use: "Use on each part's hole pattern:",
+        note: "Fixed joints halve the tolerance: the fastener is anchored in one part, so only the clearance holes can absorb error."
+      },
+      tr: {
+        title: "Bağlantı elemanı formül hesaplayıcısı", badge: "interaktif",
+        sub: "Tasarımcının en çok kullandığı hesap: boşluk deliklerine ne kadar pozisyon toleransı verilebilir? Cıvata ve delik MMC boyutlarını ayarlayın; yüzer bağlantı (iki boşluk deliğinden geçen cıvata + somun) ile sabit bağlantı (ikinci parçaya vidalanan/çakılan eleman) arasında geçiş yapın.",
+        floating: "Yüzer (cıvata + somun)", fixed: "Sabit (dişli)",
+        fLab: "Eleman MMC ⌀F", hLab: "Delik MMC ⌀H",
+        formula: "Formül", perPart: "Her parça için pozisyon toleransı",
+        clr: "boşluk / kenar",
+        bad: "H ≤ F — eleman, mükemmel konumlanmış delikten bile geçemez!",
+        use: "Her parçanın delik grubunda kullanın:",
+        note: "Sabit bağlantılar toleransı yarıya indirir: eleman bir parçaya sabitlendiği için hatayı yalnızca boşluk delikleri karşılayabilir."
+      }
+    },
+    mount: function (c, T, lang) {
+      var f = frame(c, "🔩", T.title, T.sub, T.badge);
+      var mode = "floating", F = 6.0, Hh = 6.6;
+      var stageDiv = h("div");
+      f.stage.appendChild(stageDiv);
+
+      var bFloat = h("button", { class: "btn secondary wbtn" }, T.floating);
+      var bFixed = h("button", { class: "btn secondary wbtn" }, T.fixed);
+      f.controls.appendChild(bFloat); f.controls.appendChild(bFixed);
+
+      var formulaEl = h("span"), tolEl = h("span", { class: "wverdict" });
+      f.readout.appendChild(formulaEl); f.readout.appendChild(tolEl);
+      var useEl = h("div", { class: "wfcf-use" });
+      var noteEl = h("div", { class: "waha" });
+      c.appendChild(useEl); c.appendChild(noteEl);
+
+      function draw() {
+        var S = 16, cx = 220, hw = Hh * S / 2, fw = F * S / 2;
+        var topY = 78, midY = 132, botY = 186;
+        var botHw = mode === "floating" ? hw : fw;
+        var inner =
+          // plates (each as two rects leaving the hole gap)
+          '<rect x="40" y="' + topY + '" width="' + (cx - hw - 40) + '" height="' + (midY - topY) + '" class="d-softfill" fill-opacity=".28"/>' +
+          '<rect x="' + (cx + hw) + '" y="' + topY + '" width="' + (400 - cx - hw) + '" height="' + (midY - topY) + '" class="d-softfill" fill-opacity=".28"/>' +
+          '<rect x="40" y="' + midY + '" width="' + (cx - botHw - 40) + '" height="' + (botY - midY) + '" class="d-softfill" fill-opacity=".45"/>' +
+          '<rect x="' + (cx + botHw) + '" y="' + midY + '" width="' + (400 - cx - botHw) + '" height="' + (botY - midY) + '" class="d-softfill" fill-opacity=".45"/>' +
+          '<line x1="40" y1="' + midY + '" x2="400" y2="' + midY + '" class="d-soft" stroke-width="1"/>' +
+          // bolt: head + shaft (+ nut when floating, threads when fixed)
+          '<rect x="' + (cx - fw * 1.7) + '" y="52" width="' + fw * 3.4 + '" height="26" class="d-accentfill" fill-opacity=".85"/>' +
+          '<rect x="' + (cx - fw) + '" y="78" width="' + fw * 2 + '" height="' + ((mode === "floating" ? botY + 14 : botY) - 78) + '" class="d-accentfill" fill-opacity=".7"/>' +
+          (mode === "floating"
+            ? '<rect x="' + (cx - fw * 1.7) + '" y="' + (botY + 14) + '" width="' + fw * 3.4 + '" height="20" class="d-accentfill" fill-opacity=".85"/>'
+            : Array.apply(null, Array(5)).map(function (_, i) {
+                var y = midY + 8 + i * 9;
+                return '<line x1="' + (cx - fw - 4) + '" y1="' + y + '" x2="' + (cx + fw + 4) + '" y2="' + (y - 5) + '" class="d-accent" stroke-width="1.2"/>';
+              }).join("")) +
+          // clearance annotation on the top plate
+          '<line x1="' + (cx + fw) + '" y1="' + (topY + 16) + '" x2="' + (cx + hw) + '" y2="' + (topY + 16) + '" class="d-bad" stroke-width="2"/>' +
+          '<text x="' + (cx + hw + 8) + '" y="' + (topY + 20) + '" font-size="11" class="d-softtext">' + fmt((Hh - F) / 2, lang) + " " + T.clr + "</text>" +
+          '<text x="60" y="' + (topY - 8) + '" font-size="11" class="d-softtext">⌀H = ' + fmt(Hh, lang, 1) + "</text>" +
+          '<text x="60" y="' + (botY + 30) + '" font-size="11" class="d-softtext">⌀F = ' + fmt(F, lang, 1) + "</text>";
+        stageDiv.innerHTML = "";
+        stageDiv.appendChild(svgEl(440, 240, inner));
+
+        var t = mode === "floating" ? Hh - F : (Hh - F) / 2;
+        formulaEl.innerHTML = T.formula + ": <b>" + (mode === "floating" ? "T = H − F" : "T = (H − F) / 2") + "</b>";
+        if (t <= 0) {
+          verdict(tolEl, false, "", T.bad);
+          useEl.innerHTML = "";
+        } else {
+          verdict(tolEl, true, T.perPart + ": ⌀" + fmt(t, lang), "");
+          useEl.innerHTML = T.use + " " + GDT_SVG.fcf([[{ sym: "position" }], [{ sym: "diameter" }, fmt(t, lang), { mod: "M" }], ["A"], ["B"], ["C"]]);
+        }
+        noteEl.textContent = mode === "fixed" ? T.note : "";
+        bFloat.classList.toggle("wactive", mode === "floating");
+        bFixed.classList.toggle("wactive", mode === "fixed");
+      }
+      bFloat.addEventListener("click", function () { mode = "floating"; draw(); });
+      bFixed.addEventListener("click", function () { mode = "fixed"; draw(); });
+      f.controls.appendChild(slider(T.fLab, 4, 10, 0.1, F, lang, 1, function (v) { F = v; draw(); }));
+      f.controls.appendChild(slider(T.hLab, 4, 12, 0.1, Hh, lang, 1, function (v) { Hh = v; draw(); }));
+      draw();
+    }
+  };
+
   /* ---------- mounting ---------- */
   window.GDT_WIDGETS = {
     mountAll: function (root, lang) {

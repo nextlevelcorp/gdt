@@ -6,9 +6,10 @@
 
 ## Features / Özellikler
 
-- **11 detailed lessons / 11 detaylı ders** — from "what is GD&T?" to reading real drawings: history, core concepts, feature control frames, datums, form / orientation / location / profile / runout tolerances, modifiers, bonus tolerance, virtual condition, inspection.
-- **10 interactive & animated widgets / 10 etkileşimli ve animasyonlu widget** — drag a hole inside square-vs-cylindrical zones, bend a pin against the Rule #1 envelope, build feature control frames with live plain-language readout, seat a part on its datums step by step, watch a spinning shaft move a dial indicator (runout), simulate position bonus tolerance with an MMC/RFS toggle, and explore flatness / orientation / profile with sliders.
-- **60+ quiz questions / 60+ quiz sorusu** — every lesson ends with a quiz (80% to pass) with explanations for every answer.
+- **12 detailed lessons / 12 detaylı ders** — from "what is GD&T?" to reading real drawings and *designing* with GD&T: history, core concepts, feature control frames, datums, form / orientation / location / profile / runout tolerances, modifiers, bonus tolerance, virtual condition, inspection — plus a designer's lesson: choosing datums (and thereby the fixture), fastener formulas, tolerance stack-ups, process capability and cost.
+- **12 interactive & animated widgets / 12 etkileşimli ve animasyonlu widget** — drag a hole inside square-vs-cylindrical zones, bend a pin against the Rule #1 envelope, build feature control frames with live plain-language readout, seat a part on its datums step by step, watch a spinning shaft move a dial indicator (runout), simulate position bonus tolerance with an MMC/RFS toggle, explore flatness / orientation / profile with sliders, assign datums A-B-C on a bracket like a designer, and calculate position tolerances with the floating/fixed fastener formulas.
+- **70+ quiz questions / 70+ quiz sorusu** — every lesson ends with a quiz (80% to pass) with explanations for every answer.
+- **🚗 Plastic Part Design Studio / Plastik Parça Tasarım Stüdyosu** — a practice module that deals you a *random plastic automotive part* (bumper fascia, door trim panel, HVAC vent register, cooling fan shroud, coolant expansion tank, headlamp bracket) with its interface map, then walks you through the design decisions step by step: datum/locator schemes (pin + slot, restrained datum targets, Ⓕ free state), wall/rib/boss section management, fits & clearances to surrounding parts (incl. CLTE thermal growth and squeak & rattle), molding rules (draft, grain, weld lines, glass-fiber warp), and a randomized fastener-formula calculation — with instant feedback and a debrief.
 - **Final exam / Final sınavı** — 20 random questions drawn from the whole course, new set each attempt.
 - **Interactive symbol reference / Etkileşimli sembol referansı** — all 14 geometric characteristic symbols + modifiers, filterable by category.
 - **Hand-drawn SVG diagrams / SVG diyagramlar** — tolerance zones, datum reference frames, bonus tolerance charts, virtual condition and more.
@@ -38,6 +39,7 @@ index.html          app shell
 css/style.css       theme (light/dark), layout, components
 js/diagrams.js      SVG symbol icons + technical diagrams (language-neutral)
 js/widgets.js       interactive & animated lesson widgets (drag, sliders, rAF animations)
+js/trainer.js       Plastic Part Design Studio: random part-design scenarios (EN+TR)
 js/content-en.js    English lessons, quizzes, symbol reference, UI strings
 js/content-tr.js    Turkish lessons, quizzes, symbol reference, UI strings
 js/app.js           hash router, i18n, quiz engine, progress, final exam

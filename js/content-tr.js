@@ -8,6 +8,7 @@
     appName: "GD&T Akademi",
     navHome: "Ana Sayfa",
     navLessons: "Dersler",
+    navPractice: "Pratik",
     navReference: "Referans",
     navSymbols: "Sembol Referansı",
     navExam: "Final Sınavı",
@@ -804,6 +805,125 @@
       { q: "İki ⌀10,0–10,2 delik, A|B'ye pozisyon ⌀0,25 Ⓜ taşıyor. Aynı gerçek pozisyonlarda her zaman giren en büyük eşleşen pim hangisidir?", opts: ["⌀10,2", "⌀10,0", "⌀9,75", "⌀9,5"], a: 2, ex: "VC = MMC − tol = 10,0 − 0,25 = ⌀9,75 — sanal koşul, eşleşen tasarımın sayısıdır." },
       { q: "Ⓜ'li pozisyon kontrolünde CMM ile fonksiyonel mastar neden aynı karara varmalıdır?", opts: ["Asla aynı karara varmazlar", "İkisi de FCF'nin tanımladığı aynı matematiksel gereksinimi uygular", "CMM mastarla kalibre edildiği için", "Yalnızca mastar yasal olarak geçerlidir"], a: 1, ex: "FCF kabul sınırını tanımlar; her doğru ölçüm yöntemi aynı sınırı değerlendirir." },
       { q: "Tolerans sıkılığı hakkında hangisi DOĞRUDUR?", opts: ["Her zaman makinelerinizin başarabildiği en sıkı toleransı verin", "Toleranslar fonksiyonun izin verdiği kadar gevşek olmalıdır — gereksiz sıkılık yalnızca maliyeti katlar", "Tüm unsurlar tek tolerans değerini paylaşmalıdır", "GD&T toleransları her zaman ± toleranslardan sıkıdır"], a: 1, ex: "Hedef, minimum maliyetle fonksiyonel parçadır — prosesin yeteneğini değil, fonksiyonu toleranslayın." }
+    ]
+  });
+
+  /* ============ DERS 12 ============ */
+  LESSONS.push({
+    id: "design",
+    title: "Tasarımcı için GD&T: fonksiyondan bitmiş resme",
+    short: "Bir tasarımcı datumları (ve dolayısıyla fikstürü) nasıl seçer, parçayı konumlanabilir nasıl tasarlar ve tolerans değerlerini bağlantı elemanı formülleri, stack-up ve proses kabiliyetiyle nasıl hesaplar.",
+    minutes: 20,
+    sections: [
+      {
+        h: "Toleranslama parçada değil, montajda başlar",
+        html:
+          "<p>Şimdiye kadarki her şey size GD&T'yi <em>okumayı</em> öğretti. Bu ders <em>yazmakla</em> ilgili — bir tasarımcının fonksiyonel bir gereksinimi resim üzerindeki sembollere dönüştürürken izlediği iş akışı. Sıralama son derece önemlidir:</p>" +
+          "<ol>" +
+          "<li><strong>Fonksiyonu anlayın.</strong> Parçayı değil, montajı açın. Bu parça neye dokunuyor? Ne ile eşleşiyor, sızdırmazlık yapıyor, kayıyor veya hizalanıyor? Montajda komşularına hangi sırayla temas ediyor?</li>" +
+          "<li><strong>Datum unsurlarını seçin.</strong> Bunlar parçanın montajda <em>konumlandırıldığı</em> yüzeylerdir — bu da onları otomatik olarak fikstürün ve ölçüm kurulumunun tutacağı yüzeyler yapar.</li>" +
+          "<li><strong>Datum unsurlarının kendilerini nitelendirin.</strong> Bir datum ancak geldiği yüzey kadar güvenilirdir: A'ya düzlemsellik, B'ye A'ya diklik verin, vb.</li>" +
+          "<li><strong>Geri kalan her şeyi datumlara bağlayın.</strong> Delikler ve pimler için pozisyon, konturlar için profil, fonksiyonun gerektirdiği yerde yönelim.</li>" +
+          "<li><strong>Değerleri hesaplayın.</strong> Bağlantı elemanı formülleri ve stack-up'lar fonksiyonun gerektirdiği sayıyı verir; proses kabiliyeti ise imalatın bu değeri makul maliyetle tutturup tutturamayacağını söyler.</li>" +
+          "</ol>" +
+          H.box("key", UI.definition,
+            "<p><strong>Fonksiyonel boyutlandırma:</strong> toleranslar parçanın <em>yapması gerekenden</em> — takılmak, sızdırmamak, hizalanmak — türetilir; asla atölyenin tesadüfen başardığından değil, asla eski bir resimden kopyalanarak değil. Resim gereksinimi belirtir; proses bu gereksinimi karşılamak için seçilir.</p>")
+      },
+      {
+        h: "Datum seçmek = fikstürü tasarlamak",
+        html:
+          "<p>Datum unsurlarını ve sıralarını seçtiğinizde aynı anda üç şeyi tasarlıyorsunuz: resmin <strong>koordinat sistemini</strong>, <strong>ölçüm kurulumunu</strong> ve <strong>imalat fikstürünü</strong>. 3-2-1 kuralı (Ders 4) doğrudan fikstür donanımına karşılık gelir:</p>" +
+          H.tbl(["Öncelik", "Temas (3-2-1)", "Fikstür elemanı", "Şöyle bir unsur seçin…"], [
+            ["Birincil (A)", "3 nokta — parçayı oturtur", "3 oturma pedi / düz bir ayna yüzeyi", "eş parçayla <strong>en büyük, en kararlı</strong> temasa sahip olan; genellikle montaj yüzeyi"],
+            ["İkincil (B)", "2 nokta — yönlendirir", "2 dayama pimi / bir kızak", "parçayı yönlendiren veya hizalayan: uzun bir kenar, pim deliği çifti, konumlandırma deliği"],
+            ["Üçüncül (C)", "1 nokta — durdurur", "1 dayama pimi", "son serbestlik derecesini alan: kısa bir kenar veya ikinci bir delik"]
+          ]) +
+          H.dia(D.drf(), "Datum referans çerçevesi: birincil oturtur (3 nokta), ikincil yönlendirir (2), üçüncül durdurur (1) — tam olarak bir fikstürün yaptığı iş.") +
+          "<p>İyi bir datum unsuru için kontrol listesi: montajda <strong>önce eşleşir</strong>, tekrarlanabilir konumlama için yeterince <strong>büyük ve kararlıdır</strong>, fikstür, prob ve takım tezgâhı tarafından <strong>erişilebilirdir</strong> ve sonraki operasyonların referans alabilmesi için <strong>erken işlenir</strong>.</p>" +
+          H.widget("datumPick") +
+          H.box("warn", UI.warning,
+            "<p>Klasik tasarım hatası: datumların fonksiyona göre değil, resim kolaylığına göre seçilmesi (elverişli bir kenar, kozmetik bir yüzey). Böyle parçalar <em>ölçümde</em> iyi çıkar, <em>montajda</em> kötü davranır — ölçüm koordinat sistemi, montajın kullandığı sistem değildir. Datum unsurlarınız montaj unsurları değilse, başka bir parçayı toleranslamışsınız demektir.</p>")
+      },
+      {
+        h: "Parçayı konumlanabilecek şekilde tasarlayın",
+        html:
+          "<p>İyi datumlar sonradan <em>bulunmaz</em>, baştan <em>tasarlanır</em>. Parçayı şekillendirirken:</p>" +
+          "<ul>" +
+          "<li><strong>Oturacağı bir şey verin.</strong> Doğal bir yüzey yeterince büyük ve kararlı değilse işlenmiş pedler, çıkıntılar (boss) veya bir flanş ekleyin — üç küçük eş düzlemli ped, özellikle döküm parçalarda tek büyük çarpık yüzeyden çoğu zaman daha iyidir.</li>" +
+          "<li><strong>Hizalanacağı bir şey verin.</strong> Bir çift pim/takımlama deliği mükemmel bir B–C ikilisi oluşturur ve her operasyonun, fikstürün ve CMM programının parçayı aynı şekilde konumlamasını sağlar.</li>" +
+          "<li><strong>Datum unsurlarını nitelendirin.</strong> DRF önce A, sonra B, sonra C diye kurulur; her birini bir öncekine göre kontrol edin:</li>" +
+          "</ul>" +
+          H.fcfDemo(F([[{ sym: "flatness" }], ["0.05"]]), ["datum unsuru A üzerinde — güvenilir bir temel"]) +
+          H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]]), ["datum unsuru B üzerinde — temele dik"]) +
+          H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"], ["B"]]), ["datum unsuru C üzerinde"]) +
+          "<ul>" +
+          "<li><strong>Her fonksiyonel grup için tek DRF.</strong> <em>Birlikte</em> çalışması gereken her unsur (bir cıvata deseni ve merkezlediği delik) <em>aynı</em> datumlara aynı sırayla referans vermelidir — ilişkili unsurlar arasında DRF değiştirmek, fikstürleme hatalarını sessizce stack'e ekler.</li>" +
+          "<li><strong>Döküm ve enjeksiyon parçaları:</strong> ham parça üzerinde geçici <em>takımlama datumları</em> (hedefler) tanımlayın, gerçek datum unsurlarını önce onlardan işleyin, geri kalan her şeyi işlenmiş datumlardan ölçülendirin.</li>" +
+          "</ul>"
+      },
+      {
+        h: "Değeri belirlemek: bağlantı elemanı formülleri",
+        html:
+          "<p>Cıvatalı bağlantılarda — en yaygın konumlama problemi — pozisyon toleransı tahmin edilmez; delik ile bağlantı elemanı arasındaki MMC boşluğundan <strong>hesaplanır</strong>:</p>" +
+          H.tbl(["Bağlantı tipi", "Nedir", "Formül (parça başına)"], [
+            ["<strong>Yüzer bağlantı (floating)</strong>", "Cıvata + somun <em>her iki</em> parçadaki boşluk deliklerinden geçer — cıvata ikisinde de 'yüzebilir'", "<code>T = H − F</code>"],
+            ["<strong>Sabit bağlantı (fixed)</strong>", "Eleman parçalardan <em>birine</em> vidalanır veya çakılır — boşluk yalnızca diğer parçadadır", "<code>T = (H − F) / 2</code>"]
+          ]) +
+          "<p>Burada <strong>H</strong> = delik MMC'si (en küçük delik), <strong>F</strong> = elemanın MMC'si (en büyük eleman). Sonucu daima <strong>Ⓜ</strong> ile belirtin — formüller montajı tam olarak sanal durum sınırında garanti eder ve bonus tolerans büyüyen delikleri ödüllendirmeye devam eder.</p>" +
+          H.box("example", UI.example,
+            "<p>İki plakada ⌀6,6–6,75 boşluk deliklerinden (H = ⌀6,6) geçen M6 cıvatalar (F = ⌀6,0):</p>" +
+            "<ul><li><strong>Yüzer</strong> (arkada somun): T = 6,6 − 6,0 = her plakanın deseninde <strong>⌀0,6 Ⓜ</strong>.</li>" +
+            "<li><strong>Sabit</strong> (ikinci plakaya vidalı): T = (6,6 − 6,0)/2 = her parçada <strong>⌀0,3 Ⓜ</strong>.</li></ul>") +
+          H.widget("fastener") +
+          H.box("warn", UI.warning,
+            "<p><strong>Sabit</strong> bağlantıda, dişli deliklere eş plakanın kalınlığı boyunca yansıtılan bir <strong>yansıtılmış tolerans bölgesi Ⓟ</strong> (Ders 10) ekleyin — yoksa toleransta ama eğik bir delik, dışarı taşan cıvatanın boşluk deliğini ıskalamasına yine de neden olabilir.</p>")
+      },
+      {
+        h: "Stack-up, proses kabiliyeti ve maliyet",
+        html:
+          "<p><strong>Tolerans stack-up'ı</strong> şu soruyu yanıtlar: “her unsur yasal en kötü sınırındayken montaj yine de çalışır mı?” En kötü durum yöntemi, katkıları bir zincir boyunca toplar: boşluk = nominal boşluk − Σ(tolerans katkıları). Sonuç negatifse ya gereksinimi gevşetin (daha büyük boşluk delikleri → formüllerden daha büyük T) ya da katkıları sıkın — en ucuz olanlardan başlayarak.</p>" +
+          "<p>Sonra her değeri proseslerin gerçekte tutabildiğiyle karşılaştırın:</p>" +
+          H.tbl(["Proses", "Tipik kabiliyet (kılavuz değerler)"], [
+            ["Delme (matkap)", "pozisyon ⌀0,2–0,5; boyut H12"],
+            ["Raybalama / bara işleme", "boyut H7–H9; pozisyon ⌀0,05–0,15 (iyi fikstürlemeyle)"],
+            ["Frezeleme", "düzlemsellik 0,02–0,1 / 100 mm; pozisyon ⌀0,1–0,25"],
+            ["Tornalama", "dairesellik 0,005–0,03; salgı 0,01–0,05"],
+            ["Taşlama", "düzlemsellik/paralellik 0,002–0,01"],
+            ["Enjeksiyon kalıplama", "profil 0,1–0,3 (boyuta bağlı)"],
+            ["Sac delme/bükme", "pozisyon ⌀0,1–0,3; bükme sonrası profil 0,2–0,5"]
+          ]) +
+          "<p>Ve maliyet eğrisini unutmayın: <strong>bir toleransı yarıya indirmek, onu başarmanın maliyetini kabaca ikiye katlar</strong> — daha sıkı bir değer prosesi sessizce değiştirebilir (matkap → rayba → hassas bara), operasyon ekler, ölçüm süresini uzatır ve ıskartayı artırır. Tasarımcının hedefi <em>fonksiyonu hâlâ garanti eden en gevşek toleranstır</em>.</p>" +
+          H.box("key", UI.keyPoints,
+            "<ul><li>Cıvatalı bağlantıların pozisyon değerleri <strong>T = H − F</strong> (yüzer) ve <strong>T = (H − F)/2</strong> (sabit) formüllerinden gelir, Ⓜ ile uygulanır.</li>" +
+            "<li>Sabit bağlantılar: kavrama yüksekliği boyunca Ⓟ ekleyin.</li>" +
+            "<li>En kötü durum stack-up'ıyla doğrulayın; negatif boşlukları en ucuz katkıda düzeltin.</li>" +
+            "<li>Değerleri proses kabiliyetine karşı kontrol edin — prosesin tutamadığı tolerans bir gereksinim değil, ıskarta üreticisidir.</li></ul>")
+      },
+      {
+        h: "Vaka çalışması + tasarımcının kontrol listesi",
+        html:
+          H.dia(D.drawing(), "Ders 11'deki braket — bu kez tasarımcının gözünden.") +
+          "<p>Bu plakanın baştan sona tasarım hikâyesi: yüzeyi makine gövdesine cıvatalanıyor (→ alt yüzey = <strong>A</strong>, sallanmadan oturması için " + F([[{ sym: "flatness" }], ["0.05"]]) + " gerekli), sol kenarı bir kızağa yaslanıyor (→ <strong>B</strong>, " + F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]]) + " ile) ve iki M6 cıvata, yüzer bir kapağı her iki parçadan geçerek bağlıyor. Bağlantı elemanı formülü T = 6,6 − 6,0 = ⌀0,6 verir… biz " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.25", { mod: "M" }], ["A"], ["B"]]) + " yazıyoruz çünkü stack-up, boşluğun bir kısmını kapağın kendi deseni için de kullanıyor — hesaplanan bütçe bağlantının iki parçası arasında <em>paylaştırılır</em>.</p>" +
+          H.box("key", "Tasarımcının yayın öncesi kontrol listesi",
+            "<ul>" +
+            "<li>Datumlar = parçanın <strong>montajda konumlandırıldığı</strong> unsurlar, temas sırasıyla (3-2-1)?</li>" +
+            "<li>Her datum unsuru <strong>nitelendirilmiş</strong> mi (A'da form, B ve C'de yönelim)?</li>" +
+            "<li>İlişkili tüm unsurlar <strong>tek DRF</strong> üzerinde; temel ölçüler datumlardan, araya ± konumlama ölçüsü karışmamış?</li>" +
+            "<li>Pozisyon değerleri <strong>hesaplanmış</strong> mı (bağlantı elemanı formülleri / stack-up), tahmin değil — ve fonksiyon montaj olduğunda Ⓜ ile mi uygulanmış?</li>" +
+            "<li>Sabit bağlantıların dişli/çakma deliklerinde Ⓟ var mı?</li>" +
+            "<li>Konturlu yüzeylerde eksiksiz DRF'li profil; her yüzey bir şeyle kontrol ediliyor mu (genel profil notu olağan güvenlik ağıdır)?</li>" +
+            "<li>Her değer amaçlanan prosesle <strong>başarılabilir</strong> mi — ve fonksiyonun gerektirdiğinden daha sıkı değil mi?</li>" +
+            "<li>Her sembol için fikstürü ve mastarı tarif edebiliyor musunuz? Siz edemiyorsanız tezgâhçı da edemez.</li>" +
+            "</ul>")
+      }
+    ],
+    quiz: [
+      { q: "Normalde hangi unsur birincil datum (A) olmalıdır?", opts: ["CMM'de problaması en kolay yüzey", "Parçayı montajında konumlandıran en büyük/en kararlı yüzey", "Sıkı toleranslı herhangi bir yüzey", "CAD ağacında ilk sırada listelenen yüzey"], a: 1, ex: "Birincil datum 3 temas noktası alır — parçayı montajda gerçekten oturtan unsur olmalıdır; fikstürün tutacağı yüzey de budur." },
+      { q: "Cıvata + somun HER İKİ parçadaki boşluk deliklerinden geçiyor. Delik MMC ⌀6,6, cıvata MMC ⌀6,0. Parça başına pozisyon toleransı?", opts: ["⌀0,3", "⌀0,6", "⌀1,2", "⌀0,15"], a: 1, ex: "Yüzer bağlantı: T = H − F = 6,6 − 6,0 = her parçanın deseni için ⌀0,6 (Ⓜ ile)." },
+      { q: "Aynı bağlantı, ama cıvata ikinci parçaya vidalanıyor. Parça başına pozisyon toleransı?", opts: ["⌀0,6", "⌀0,45", "⌀0,3", "⌀0,9"], a: 2, ex: "Sabit bağlantı: T = (H − F)/2 = 0,6/2 = ⌀0,3 — hatayı yalnızca bir parçanın boşluğu karşılayabildiği için bütçe bölünür." },
+      { q: "Yeni bir parçayı toleranslarken İLK adım nedir?", opts: ["Atölyenin tezgâh kabiliyetlerini listelemek", "Benzer eski bir resimden toleransları kopyalamak", "Montajı incelemek: parça neye dokunuyor, neyle eşleşiyor, hangi sırayla", "Her şeye genel bir profil toleransı uygulamak"], a: 2, ex: "Her şeyi fonksiyon yönlendirir — datum seçimi, karakteristikler ve değerler parçanın montajdaki yaşamından gelir." },
+      { q: "Datum önceliği (hangisi A, hangisi B…) neye göre seçilmelidir?", opts: ["CAD yüzeylerinin alfabetik sırasına", "Parçanın montajda eşlerine/fikstüre temas etme sırasına", "Unsurların işlenme sırasına", "En gevşek toleransı veren sıraya"], a: 1, ex: "DRF, parçanın konumlanma şeklinin matematiksel kopyasıdır: birincil oturtur (3 nokta), ikincil yönlendirir (2), üçüncül durdurur (1)." },
+      { q: "Stack-up, delinmiş bir delikte pozisyon ⌀0,05 istiyor (delme ~⌀0,2–0,5 tutar). En iyi tasarım yanıtı?", opts: ["Yine de ⌀0,05 yazın — atölye bir yolunu bulur", "Daha fazla boşluk için yeniden tasarlayın veya kabiliyetli bir prosese (rayba/bara) geçip maliyetini hesaplayın", "Pozisyon sembolünü silin", "Sayı iyi görünene kadar datumları değiştirin"], a: 1, ex: "Prosesin tutamadığı tolerans bir ıskarta makinesidir. Ya fonksiyona daha fazla alan verin (büyük boşluk → gevşek T) ya da bilinçli olarak daha kabiliyetli bir proses satın alın." }
     ]
   });
 

@@ -41,6 +41,7 @@
     appName: "GD&T Academy",
     navHome: "Home",
     navLessons: "Lessons",
+    navPractice: "Practice",
     navReference: "Reference",
     navSymbols: "Symbol Reference",
     navExam: "Final Exam",
@@ -839,6 +840,125 @@
       { q: "Two ⌀10.0–10.2 holes carry position ⌀0.25 Ⓜ to A|B. What is the largest mating pin (at the same true positions) that always fits?", opts: ["⌀10.2", "⌀10.0", "⌀9.75", "⌀9.5"], a: 2, ex: "VC = MMC − tol = 10.0 − 0.25 = ⌀9.75 — the virtual condition is the mating-design number." },
       { q: "Why must a CMM and a functional gauge agree on a position-at-Ⓜ check?", opts: ["They never agree", "Both implement the same mathematical requirement defined by the FCF", "Because the CMM is calibrated by the gauge", "Only the gauge is legally valid"], a: 1, ex: "The FCF defines the acceptance boundary; any correct measurement method evaluates that same boundary." },
       { q: "Which is TRUE about tolerance tightness?", opts: ["Always specify the tightest tolerance your machines can achieve", "Tolerances should be as loose as function allows — unnecessary tightness only multiplies cost", "All features should share one tolerance value", "GD&T tolerances are always tighter than ± tolerances"], a: 1, ex: "The goal is functional parts at minimum cost — tolerance the function, not the process capability." }
+    ]
+  });
+
+  /* ============ LESSON 12 ============ */
+  LESSONS.push({
+    id: "design",
+    title: "GD&T for designers: from function to finished drawing",
+    short: "How a designer chooses datums (and thereby the fixture), designs the part to be located, and calculates tolerance values with fastener formulas, stack-ups and process capability.",
+    minutes: 20,
+    sections: [
+      {
+        h: "Tolerancing starts in the assembly, not on the part",
+        html:
+          "<p>Everything so far taught you to <em>read</em> GD&T. This lesson is about <em>writing</em> it — the workflow a designer follows to turn a functional requirement into callouts on a drawing. The order matters enormously:</p>" +
+          "<ol>" +
+          "<li><strong>Understand the function.</strong> Open the assembly, not the part. What does this part touch? What mates, seals, slides, or aligns? In what order does it contact its neighbors when assembled?</li>" +
+          "<li><strong>Choose the datum features.</strong> They are the surfaces the part is <em>located by</em> in the assembly — which automatically makes them the surfaces the fixture and the inspection setup will hold.</li>" +
+          "<li><strong>Qualify the datum features themselves.</strong> A datum is only as trustworthy as the surface it comes from: give A a flatness, B a perpendicularity to A, and so on.</li>" +
+          "<li><strong>Relate everything else to the datums.</strong> Position for holes and pins, profile for contours, orientation where function demands it.</li>" +
+          "<li><strong>Calculate the values.</strong> Fastener formulas and stack-ups give the number function needs; process capability tells you whether manufacturing can hit it at reasonable cost.</li>" +
+          "</ol>" +
+          H.box("key", UI.definition,
+            "<p><strong>Functional dimensioning:</strong> tolerances are derived from what the part must <em>do</em> — fit, seal, align — never from what the machine shop happens to achieve, and never copied from an old drawing. The drawing states the requirement; the process is chosen to meet it.</p>")
+      },
+      {
+        h: "Choosing datums = designing the fixture",
+        html:
+          "<p>When you pick datum features and their order, you are simultaneously designing three things: the <strong>coordinate system</strong> of the drawing, the <strong>inspection setup</strong>, and the <strong>manufacturing fixture</strong>. The 3-2-1 rule (Lesson 4) maps directly to fixture hardware:</p>" +
+          H.tbl(["Precedence", "Contact (3-2-1)", "Fixture element", "Pick a feature that…"], [
+            ["Primary (A)", "3 points — seats the part", "3 rest pads / a flat chuck face", "has the <strong>largest, most stable</strong> contact with the mating part; usually the mounting face"],
+            ["Secondary (B)", "2 points — guides it", "2 stop pins / a rail", "guides or aligns the part: a long edge, a dowel-pin hole pair, a locating bore"],
+            ["Tertiary (C)", "1 point — stops it", "1 stop pin", "removes the last degree of freedom: a short edge or a second hole"]
+          ]) +
+          H.dia(D.drf(), "The datum reference frame: primary seats (3 points), secondary guides (2), tertiary stops (1) — exactly what a fixture does.") +
+          "<p>Checklist for a good datum feature: it <strong>mates first</strong> in assembly, it is <strong>large and stable</strong> enough to locate repeatably, it is <strong>reachable</strong> by the fixture, the probe and the machine tool, and it is <strong>machined early</strong> so later operations can reference it.</p>" +
+          H.widget("datumPick") +
+          H.box("warn", UI.warning,
+            "<p>The classic design failure: datums chosen for drawing convenience (a handy edge, a cosmetic face) instead of function. Such parts <em>measure</em> good and <em>assemble</em> badly — the inspection coordinate system simply isn't the one the assembly uses. If your datum features are not the mounting features, you have toleranced a different part.</p>")
+      },
+      {
+        h: "Design the part so it can be located",
+        html:
+          "<p>Good datums are <em>designed in</em>, not found afterwards. While shaping the part:</p>" +
+          "<ul>" +
+          "<li><strong>Give it something to sit on.</strong> If no natural face is large and stable enough, add machined pads, bosses, or a flange — three small coplanar pads often beat one big warped face, especially on castings.</li>" +
+          "<li><strong>Give it something to align with.</strong> A pair of dowel/tooling holes makes an excellent B–C combination and lets every operation, fixture and CMM program locate the part identically.</li>" +
+          "<li><strong>Qualify the datum features.</strong> The DRF is built A-then-B-then-C, so control each one relative to the previous:</li>" +
+          "</ul>" +
+          H.fcfDemo(F([[{ sym: "flatness" }], ["0.05"]]), ["on datum feature A — a trustworthy foundation"]) +
+          H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]]), ["on datum feature B — square to the foundation"]) +
+          H.fcfDemo(F([[{ sym: "perpendicularity" }], ["0.1"], ["A"], ["B"]]), ["on datum feature C"]) +
+          "<ul>" +
+          "<li><strong>One DRF per functional group.</strong> Every feature that must work <em>together</em> (a bolt pattern and the bore it centers on) should reference the <em>same</em> datums in the same order — switching DRFs between related features silently adds their fixturing error to the stack.</li>" +
+          "<li><strong>Castings & molded parts:</strong> define temporary <em>tooling datums</em> (targets) on the raw part, machine the real datum features from them first, then dimension everything else from the machined datums.</li>" +
+          "</ul>"
+      },
+      {
+        h: "Setting the value: the fastener formulas",
+        html:
+          "<p>For bolted joints — the most common location problem — the position tolerance is not guessed; it is <strong>calculated</strong> from the clearance between hole and fastener at MMC:</p>" +
+          H.tbl(["Joint type", "What it is", "Formula (per part)"], [
+            ["<strong>Floating fastener</strong>", "Bolt + nut pass through clearance holes in <em>both</em> parts — the bolt can 'float' in both", "<code>T = H − F</code>"],
+            ["<strong>Fixed fastener</strong>", "The fastener is threaded or pressed into <em>one</em> part — only the other part has clearance", "<code>T = (H − F) / 2</code>"]
+          ]) +
+          "<p>where <strong>H</strong> = hole MMC (smallest hole) and <strong>F</strong> = fastener MMC (largest fastener). Always specify the result with <strong>Ⓜ</strong> — the formulas guarantee assembly exactly at the virtual-condition boundary, and bonus tolerance keeps rewarding larger holes.</p>" +
+          H.box("example", UI.example,
+            "<p>M6 bolts (F = ⌀6.0) through ⌀6.6–6.75 clearance holes (H = ⌀6.6) in two plates:</p>" +
+            "<ul><li><strong>Floating</strong> (nut on the back): T = 6.6 − 6.0 = <strong>⌀0.6 Ⓜ</strong> on each plate's pattern.</li>" +
+            "<li><strong>Fixed</strong> (threaded into the second plate): T = (6.6 − 6.0)/2 = <strong>⌀0.3 Ⓜ</strong> on each part.</li></ul>") +
+          H.widget("fastener") +
+          H.box("warn", UI.warning,
+            "<p>For the <strong>fixed</strong> case, add a <strong>projected tolerance zone Ⓟ</strong> (Lesson 10) on the threaded holes, projected over the mating plate's thickness — otherwise a hole that is in tolerance but tilted can still make the protruding bolt miss the clearance hole.</p>")
+      },
+      {
+        h: "Stack-ups, process capability, and cost",
+        html:
+          "<p><strong>Tolerance stack-up</strong> answers: “when every feature is at its worst legal limit, does the assembly still work?” The worst-case method simply adds contributions along a chain: gap = nominal gap − Σ(tolerance contributions). If the answer is negative, either loosen the requirement (bigger clearance holes → bigger T from the formulas) or tighten the contributors — starting with the cheapest ones.</p>" +
+          "<p>Then reality-check every value against what processes can actually hold:</p>" +
+          H.tbl(["Process", "Typical capability (guide values)"], [
+            ["Drilling", "position ⌀0.2–0.5; size H12"],
+            ["Reaming / boring", "size H7–H9; position ⌀0.05–0.15 (with good fixturing)"],
+            ["Milling", "flatness 0.02–0.1 per 100 mm; position ⌀0.1–0.25"],
+            ["Turning", "circularity 0.005–0.03; runout 0.01–0.05"],
+            ["Grinding", "flatness/parallelism 0.002–0.01"],
+            ["Injection molding", "profile 0.1–0.3 (size-dependent)"],
+            ["Sheet-metal punching/bending", "position ⌀0.1–0.3; profile 0.2–0.5 after bending"]
+          ]) +
+          "<p>And remember the cost curve: <strong>each halving of a tolerance roughly doubles the cost</strong> of achieving it — a tighter value can silently change the process (drill → ream → jig-bore), add operations, add inspection time, and raise scrap. The designer's target is the <em>loosest tolerance that still guarantees function</em>.</p>" +
+          H.box("key", UI.keyPoints,
+            "<ul><li>Position values for bolted joints come from <strong>T = H − F</strong> (floating) and <strong>T = (H − F)/2</strong> (fixed), applied at Ⓜ.</li>" +
+            "<li>Fixed fasteners: add Ⓟ over the engagement height.</li>" +
+            "<li>Verify with a worst-case stack-up; fix negative gaps at the cheapest contributor.</li>" +
+            "<li>Check values against process capability — a tolerance the process can't hold is a scrap generator, not a requirement.</li></ul>")
+      },
+      {
+        h: "Case study + the designer's checklist",
+        html:
+          H.dia(D.drawing(), "The bracket from Lesson 11 — now seen through the designer's eyes.") +
+          "<p>Design story for this plate, end to end: it bolts face-down to a machine base (→ bottom face = <strong>A</strong>, needs " + F([[{ sym: "flatness" }], ["0.05"]]) + " to sit without rocking), its left edge slides against a rail (→ <strong>B</strong>, with " + F([[{ sym: "perpendicularity" }], ["0.1"], ["A"]]) + "), and two M6 bolts fasten a floating cover through both parts. The fastener formula gives T = 6.6 − 6.0 = ⌀0.6… we specify " + F([[{ sym: "position" }], [{ sym: "diameter" }, "0.25", { mod: "M" }], ["A"], ["B"]]) + " because the stack-up also uses part of the clearance for the cover's own pattern — the calculated budget is <em>shared</em> between the two parts of the joint.</p>" +
+          H.box("key", "The designer's pre-release checklist",
+            "<ul>" +
+            "<li>Datums = the features the part is <strong>located by in assembly</strong>, in contact order (3-2-1)?</li>" +
+            "<li>Every datum feature <strong>qualified</strong> (form on A, orientation on B and C)?</li>" +
+            "<li>All related features on <strong>one DRF</strong>; basic dimensions from the datums, no ± locating dims mixed in?</li>" +
+            "<li>Position values <strong>calculated</strong> (fastener formulas / stack-up), not guessed — and applied at Ⓜ where the function is assembly?</li>" +
+            "<li>Ⓟ on threaded/press-fit holes of fixed joints?</li>" +
+            "<li>Profile with a complete DRF for contoured surfaces; every surface controlled by something (a general profile note is the usual safety net)?</li>" +
+            "<li>Each value <strong>achievable</strong> by the intended process — and no tighter than function needs?</li>" +
+            "<li>Could you describe the fixture and the gauge for every callout? If not, neither can the machinist.</li>" +
+            "</ul>")
+      }
+    ],
+    quiz: [
+      { q: "Which feature should normally be the primary datum (A)?", opts: ["The easiest surface to probe on a CMM", "The largest/most stable surface that locates the part in its assembly", "Any surface with a tight tolerance", "The surface listed first in the CAD tree"], a: 1, ex: "The primary datum takes 3 points of contact — it must be the feature that actually seats the part in the assembly, which is also what the fixture will hold." },
+      { q: "A bolt + nut passes through clearance holes in BOTH parts. Hole MMC ⌀6.6, bolt MMC ⌀6.0. Position tolerance per part?", opts: ["⌀0.3", "⌀0.6", "⌀1.2", "⌀0.15"], a: 1, ex: "Floating fastener: T = H − F = 6.6 − 6.0 = ⌀0.6 for each part's pattern (at Ⓜ)." },
+      { q: "Same joint, but the bolt threads into the second part. Position tolerance per part?", opts: ["⌀0.6", "⌀0.45", "⌀0.3", "⌀0.9"], a: 2, ex: "Fixed fastener: T = (H − F)/2 = 0.6/2 = ⌀0.3 — only one part's clearance can absorb error, so the budget is split." },
+      { q: "What is the FIRST step when tolerancing a new part?", opts: ["List the shop's machine capabilities", "Copy tolerances from a similar old drawing", "Study the assembly: what the part touches, mates with, and in what order", "Apply a general profile tolerance to everything"], a: 2, ex: "Function drives everything — datum choice, characteristics and values all come from how the part lives in its assembly." },
+      { q: "Datum precedence (which is A, which is B…) should be chosen to match…", opts: ["alphabetical order of the CAD faces", "the order in which the part contacts its mates / fixture in assembly", "the order the features are machined", "whichever order gives the loosest tolerances"], a: 1, ex: "The DRF is a mathematical copy of how the part is located: primary seats (3 points), secondary guides (2), tertiary stops (1)." },
+      { q: "Your stack-up demands position ⌀0.05 on a drilled hole (drilling holds ~⌀0.2–0.5). Best design response?", opts: ["Specify ⌀0.05 anyway — the shop will figure it out", "Redesign for more clearance, or move to a capable process (ream/bore) and price it", "Delete the position callout", "Change the datums until the number looks better"], a: 1, ex: "A tolerance the process can't hold is a scrap machine. Either give the function more room (bigger clearance → looser T) or deliberately buy a more capable process." }
     ]
   });
 
