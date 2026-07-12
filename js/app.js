@@ -42,6 +42,7 @@
       if (idx >= 0 && idx < lessons().length) return { page: "lesson", idx: idx };
     }
     if (h === "#/symbols") return { page: "symbols" };
+    if (h === "#/trainer") return { page: "trainer" };
     if (h === "#/exam") return { page: "exam" };
     return { page: "home" };
   }
@@ -61,6 +62,8 @@
         (done ? '<span class="nav-score">' + done.score + "/" + done.total + "</span>" : "") +
         "</a>";
     });
+    h += '<div class="nav-group-label">' + ui.navPractice + "</div>";
+    h += navItem("#/trainer", "🚗", GDT_TRAINER.ui(state.lang).navLabel, r.page === "trainer", false);
     h += '<div class="nav-group-label">' + ui.navReference + "</div>";
     h += navItem("#/symbols", "⌖", ui.navSymbols, r.page === "symbols", false);
     var examDone = state.progress["exam"];
@@ -114,6 +117,8 @@
         (done ? '<span class="card-done">✓ ' + ui.completed + "</span>" : "") +
         "</a>";
     });
+    var tui = GDT_TRAINER.ui(state.lang);
+    h += '<a class="card" href="#/trainer"><span class="card-num">🚗 ' + ui.navPractice + "</span><h3>" + tui.title + "</h3><p>" + tui.intro + "</p></a>";
     h += '<a class="card" href="#/symbols"><span class="card-num">' + ui.navReference + "</span><h3>" + ui.symTitle + "</h3><p>" + ui.symIntro + "</p></a>";
     h += '<a class="card" href="#/exam"><span class="card-num">🎓</span><h3>' + ui.examTitle + "</h3><p>" + ui.examIntro + "</p></a>";
     h += "</div>";
@@ -326,6 +331,7 @@
     if (r.page === "home") content.innerHTML = renderHome();
     else if (r.page === "lesson") { content.innerHTML = renderLesson(r.idx); bindQuiz(r.idx); }
     else if (r.page === "symbols") { content.innerHTML = renderSymbols(); bindSymbols(); }
+    else if (r.page === "trainer") { GDT_TRAINER.mount(content, state.lang); }
     else if (r.page === "exam") { content.innerHTML = renderExam(); bindExam(); }
     if (window.GDT_WIDGETS) GDT_WIDGETS.mountAll(content, state.lang);
     // re-trigger entry animation

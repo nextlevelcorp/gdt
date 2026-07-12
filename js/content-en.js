@@ -41,6 +41,7 @@
     appName: "GD&T Academy",
     navHome: "Home",
     navLessons: "Lessons",
+    navPractice: "Practice",
     navReference: "Reference",
     navSymbols: "Symbol Reference",
     navExam: "Final Exam",

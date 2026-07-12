@@ -348,6 +348,28 @@ td .sym-icon { vertical-align: middle; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 
+/* ---------- Design Studio (trainer) ---------- */
+.tr-head {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow);
+  margin: 14px 0 18px; animation: popIn .3s ease both;
+}
+.tr-emoji { font-size: 2.4rem; line-height: 1; }
+.tr-head h3 { margin: 0 0 6px; border: 0; padding: 0; }
+.tr-progress {
+  height: 6px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; overflow: hidden; margin: 18px 0;
+}
+.tr-progress i { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
+.tr-topic {
+  display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--accent-dark); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; margin-bottom: 10px;
+}
+.tr-step.graded .quiz-explain { display: block; }
+.tr-step .quiz-opt { user-select: none; }
+
 /* ---------- Page animations ---------- */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { 0% { transform: scale(.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }

@@ -8,6 +8,7 @@
     appName: "GD&T Akademi",
     navHome: "Ana Sayfa",
     navLessons: "Dersler",
+    navPractice: "Pratik",
     navReference: "Referans",
     navSymbols: "Sembol Referansı",
     navExam: "Final Sınavı",
