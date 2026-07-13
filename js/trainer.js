@@ -1,514 +1,705 @@
 /* ===== GD&T Academy — trainer.js =====
- * "Plastic Part Design Studio": random plastic automotive-part design
- * scenarios. Each round: a part, its interface map (surrounding parts),
- * and a step-by-step design task — datum scheme, wall/rib section
- * management, fits & clearances (incl. CLTE), molding rules, and a
- * randomized fastener calculation.
+ * "Plastic Design Bench": a hands-on, visual, 3D studio (no quizzes).
+ * Each station is an interactive rig where you manipulate real design
+ * parameters on an orbitable 3D plastic part (drag to rotate) and watch
+ * the consequence live — sink marks, ejection scuffs, thermal collisions,
+ * over-constraint warp, and fastener position zones.
  * app.js routes #/trainer here via GDT_TRAINER.mount(container, lang).
  */
 (function () {
   "use strict";
 
-  var DATA = {
+  /* ---------------- tiny DOM + math helpers ---------------- */
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function fmt(n, lang, dp) {
+    var s = (+n).toFixed(dp == null ? 2 : dp);
+    return lang === "tr" ? s.replace(".", ",") : s;
+  }
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    /* ================= ENGLISH ================= */
-    en: {
-      ui: {
-        navLabel: "Design Studio",
-        title: "🚗 Plastic Part Design Studio",
-        intro: "A random plastic automotive part lands on your desk. Work through it the way a plastics design engineer does: read its environment, choose the datum/locator scheme, manage walls, ribs and bosses, budget clearances (including thermal growth), respect the molding process — and calculate what needs calculating. A new random part every round.",
-        newPart: "🎲 Draw a random part",
-        anotherPart: "🎲 Draw another part",
-        briefTitle: "Design brief",
-        processWord: "Process",
-        envTitle: "Interface map — what surrounds this part",
-        envHeads: ["Mating part / environment", "Interface", "What matters"],
-        stepWord: "Step",
-        next: "Next step →",
-        finish: "See the debrief →",
-        resultTitle: "Debrief",
-        scoreWord: "Score",
-        resultPass: "Strong work — this part would survive a design review.",
-        resultFail: "Review the explanations above, then draw another part — the designer's eye is built by repetition.",
-        takeaways: "Key takeaways for this part",
-        topics: { iface: "Interfaces & function", datum: "Datums & locators", tol: "Tolerancing", section: "Section management", fit: "Fit & clearance", calc: "Calculation", mfg: "Molding & process" },
-        calcFloatQ: "Assembly: M{F} bolts and nuts pass through ⌀{H} MMC clearance holes in BOTH this part and its mate — a floating-fastener joint. Bolt MMC = ⌀{F}.0. Position tolerance available for each part's hole pattern?",
-        calcFixedQ: "Assembly: ⌀{F}.0 MMC fasteners/clips are anchored in one part; the mating holes are ⌀{H} MMC — a fixed-fastener joint. Position tolerance for each part's pattern?",
-        calcFloatEx: "Floating fastener: T = H − F = {H} − {F}.0 = ⌀{T} for each part, applied at Ⓜ.",
-        calcFixedEx: "Fixed fastener: T = (H − F)/2 = ({H} − {F}.0)/2 = ⌀{T} per part, applied at Ⓜ — generous molded-hole clearances exist exactly because plastic patterns need this room."
-      },
-      parts: [
-        {
-          icon: "🛡️", name: "Bumper fascia", process: "Injection-molded PP/EPDM, painted",
-          brief: "A 1.8-metre flexible, painted, customer-visible skin that must meet steel fenders and headlamps with perfect gaps — while being too floppy to measure like a rigid part and growing millimetres every summer.",
-          env: [
-            ["Steel fenders", "Visible gap & flush both sides", "CLTE mismatch: PP grows ~10× more than steel"],
-            ["Headlamps", "Visible cutline", "Gap balance across three parts"],
-            ["Grille / trim inserts", "Snap-fit openings", "Undercuts need slides in the tool"],
-            ["Body brackets", "Screws + sliding clips", "Where the part is held — and where it may move"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "A 1.8 m flexible fascia sags under its own weight. How is it dimensioned and measured?", opts: ["Free state only — measure it on a granite table like a machined block", "Restrained: clamped on datum TARGETS that simulate the body mounts, with the restraint documented on the drawing", "Make it thick enough to be rigid, then use 3-2-1", "No datums — visual check only"], a: 1, ex: "Flexible parts are toleranced in the restrained condition: datum targets copy the real body attachment points, the drawing states the clamping, and the checking fixture rebuilds the car. Free-state checks are the documented exception (Ⓕ), not the rule." },
-            { t: "mcq", topic: "fit", q: "PP on a steel body: ~1 m span, −30…+80 °C. The fascia grows several millimetres more than the fender it must gap to. Design response?", opts: ["Tighten the gap tolerance so it can't move", "Fix the part rigidly at every bracket", "Fix the CENTER, let the ends float on sliding attachments — give the thermal growth a designed direction, and set nominal gaps hot/cold", "Specify steel filler in the PP"], a: 2, ex: "ΔL = α·L·ΔT ≈ (150−12)·10⁻⁶ × 1000 mm × 60 °C ≈ 8 mm relative movement. You cannot tolerance that away: one anchored point plus sliding attachments aims the growth, and the gap study is run at temperature extremes." },
-            { t: "mcq", topic: "section", q: "Stiffening ribs are needed right behind a painted class-A surface. Section rule?", opts: ["Rib thickness ≈ 50–60% of the wall it joins, generous radius, or core the rib from behind — sink marks on class-A are unshippable", "Ribs same thickness as the wall for strength", "Double-thickness ribs, painted over", "Never rib a fascia"], a: 0, ex: "A thick rib root creates a local heavy section that shrinks more and prints a sink mark through the paint. Thin ribs (50–60%), radii, and coring keep the visible side flat — section management IS surface quality on plastics." },
-            { t: "mcq", topic: "mfg", q: "The fascia fills from several gates, so flow fronts meet somewhere. Weld lines are weak and visible. The designer's move?", opts: ["Weld lines are the molder's problem, not the drawing's", "Polish them off after molding", "Work with the molder on gate positions so weld lines land in hidden, low-stress zones (behind the plate recess, under trim) — before the tool is cut", "Add more gates everywhere"], a: 2, ex: "Gate layout decides where weld lines fall; once the tool is cut it's fixed. Front-loading a filling simulation and steering weld lines away from visible and impact-loaded areas is a design task, not a production afterthought." },
-            { t: "mcq", topic: "tol", q: "Profile |1.0|A|B|C applies restrained. Logistics also needs the unclamped part to stay within 3.0 so it fits the shipping rack. How is that written?", opts: ["A note saying 'be careful'", "A second, looser profile callout marked Ⓕ (free state) alongside the restrained one", "Impossible — one part can't have two profiles", "Use ± dimensions for the free shape"], a: 1, ex: "Dual callouts are standard for flexible parts: the tight profile applies restrained on the datum targets; the loose Ⓕ profile bounds the free-state shape. Two requirements, two conditions, both measurable." }
-          ],
-          tips: [
-            "Flexible part = restrained datums on targets that copy the body; Ⓕ marks the free-state exceptions.",
-            "CLTE is a design input: anchor one point, slide the rest, and run gap studies hot and cold.",
-            "On class-A plastics, section management (rib %, radii, coring) is what keeps the painted surface flat."
-          ]
-        },
-        {
-          icon: "💡", name: "Headlamp bracket", process: "Injection-molded PA6-GF30",
-          brief: "Positions the headlamp between fender, bumper and grille — three visible gaps meet at one corner. A masterclass in tolerance chains and glass-filled molding.",
-          env: [
-            ["Radiator support", "Screws + locating pins", "The bracket's own mounting datums"],
-            ["Headlamp housing", "Snap-fits + screws", "Lamp position = bracket position"],
-            ["Fender edge", "Visible 3.5 ± 0.5 gap", "The gap every customer sees"],
-            ["Bumper / grille", "Two more visible interfaces", "Gaps must be balanced, not just in-spec"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "Lamp, fender and bumper must align at one visible corner. The winning datum strategy?", opts: ["Each part locates on whichever neighbor is closest", "Chain them: fender→bracket→lamp→bumper", "Locate lamp, fender and bumper from the SAME body reference points — a common DRF cuts the chains", "Leave it to line workers to align"], a: 2, ex: "Every part-to-part link adds its tolerances to the visible gap. Locating all gap-forming parts from shared master references (common body datums) is the single strongest move in visual-quality design." },
-            { t: "mcq", topic: "section", q: "Section rule for the molded bracket walls?", opts: ["Nominal uniform wall (~2.5 mm) everywhere; ribs — thinner than the wall — where stiffness is needed", "Thick blocks at load points, thin elsewhere", "Constant 6 mm for strength", "Whatever CAD fillets produce"], a: 0, ex: "Non-uniform sections in injection molding create sinks, voids and warp — which destroy the very positions you toleranced. Rib thickness ≈ 60% of the wall it meets, to avoid sink on the visible side." },
-            { t: "mcq", topic: "mfg", q: "PA6-GF30 (30% glass fiber) shrinks differently along vs across fiber flow. Design consequence?", opts: ["No consequence — shrink is shrink", "Warp depends on gate position and flow direction: critical locating features should sit where flow (and the toolmaker) can keep them true — and the drawing tolerances must respect it", "Glass fiber removes all shrinkage", "Only color is affected"], a: 1, ex: "Anisotropic shrink means the tool and the part are co-designed: gate placement, flow direction and achievable profile tolerances are agreed with the molder BEFORE the drawing is released." },
-            { t: "mcq", topic: "fit", q: "Gap budget: fender gap 3.5 ± 0.5 mm, with the bracket one of 4 contributors in the chain. Worst-case, what does the bracket get?", opts: ["±0.5 — same as the total", "Roughly its share of ±0.5 (≈±0.12 if split evenly) — unless you cut the chain with a common datum or an adjuster", "±1.0 — molded parts need more", "Gap budgets are inspection's problem"], a: 1, ex: "Worst-case stacks divide the budget among contributors. ±0.12 on a molded part is expensive-to-impossible — which is exactly why the datum-strategy answer (cut the chain) and adjusters exist." },
-            { t: "mcq", topic: "tol", q: "The bracket's lamp-locating surfaces (pins, pads, snap seats): the natural callout?", opts: ["Circularity on each pin", "± linear dimensions from part edges", "Flatness on everything", "Profile of a surface / position, all referencing the bracket's mounting datums (radiator-support interface)"], a: 3, ex: "The features that position the lamp are controlled to the features that position the bracket — one DRF from the mounting interface, profile for the shaped seats, position for pins. The chain stays computable end to end." }
-          ],
-          tips: [
-            "Visible-gap design: shorten tolerance chains with common datums before tightening any single tolerance.",
-            "Molded sections: uniform wall, ribs at ~60%, or sink/warp will eat your position tolerances.",
-            "With fiber-filled plastics, the drawing and the mold are designed together — talk to the molder early."
-          ]
-        },
-        {
-          icon: "🚪", name: "Door trim panel", process: "Injection-molded ABS, grained",
-          brief: "The big visible panel the passenger touches every day: clips into the steel door, carries the switch bezel and speaker grille, and must never squeak, rattle or show a sink mark through its grain.",
-          env: [
-            ["Steel door inner", "Clip pattern + one screw", "Locator scheme and clip position tolerances"],
-            ["Switch bezel / grille", "Snap-fit sub-parts", "Visible sub-gaps on the panel itself"],
-            ["Occupant", "Grained class-A surface, touch loads", "Sink marks, stiffness, squeak & rattle"],
-            ["Glass & seals", "Moving glass behind the panel", "Clearance to moving parts"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "The locator scheme is one round pin (4-way), one SLOT (2-way), plus face pads. Why a slot instead of a second round pin?", opts: ["Slots are cheaper to mold", "Two round pins over-constrain: pitch variation and thermal growth would fight the pins, warping the panel — the slot locates in one direction and releases the other", "The slot is for drainage", "Style department asked for it"], a: 1, ex: "The 4-way pin fixes X-Y, the 2-way slot fixes rotation but releases the pin-to-pin distance — exactly where molding variation and CLTE live. This pin-and-slot pattern is THE standard plastic-trim locating scheme." },
-            { t: "calc", topic: "calc", kind: "fixed", Fset: [6, 8] },
-            { t: "mcq", topic: "section", q: "A self-tapping screw boss on the back of the grained surface. Correct boss design?", opts: ["A solid cylinder — maximum thread engagement", "Boss wall ≈ 60% of nominal wall, cored hollow, tied to the wall with thin gussets instead of solid mass", "Attach the boss directly to the class-A wall with a thick root", "The taller the boss, the better"], a: 1, ex: "A solid or thick-rooted boss is a heavy section: it sinks through the visible grain and voids internally. Cored boss + thin gussets gives screw retention without printing its silhouette on the A-side." },
-            { t: "mcq", topic: "mfg", q: "The visible side carries a leather grain texture. Effect on draft angles?", opts: ["None — texture is cosmetic", "Textured walls need MORE draft: roughly +1° per 0.025 mm of grain depth on top of the base draft, or ejection scuffs the grain", "Texture lets you use zero draft", "Draft only matters on ribs"], a: 1, ex: "Grain is thousands of tiny undercuts. Without extra draft the pattern drags on ejection and leaves shiny scuff marks — a classic late-tooling crisis that the designer prevents on day one." },
-            { t: "mcq", topic: "fit", q: "Trim panel edge near the metal door frame: how do you manage the touching risk (squeak & rattle)?", opts: ["Nominal zero gap — 'just touching' looks best", "Either a DESIGNED clearance (with stack-up proof it never closes) or a designed interference through a soft element (foam, felt, flocking) — never accidental contact", "Leave 5 mm everywhere to be safe", "Squeaks are a warranty problem, not a design problem"], a: 1, ex: "S&R engineering knows only two safe states: guaranteed gap or guaranteed preload through a compliant layer. The tolerance stack must prove whichever one you chose; 'nominal touching' guarantees noise on half the cars." }
-          ],
-          tips: [
-            "Pin + slot + pads: locate plastics without over-constraint so molding variation and CLTE have somewhere to go.",
-            "Bosses and ribs follow the 60% rule and stay off the class-A wall — retention without sink.",
-            "Squeak & rattle: design a proven gap or a proven preload; anything in between is noise."
-          ]
-        },
-        {
-          icon: "🌬️", name: "HVAC vent register", process: "Injection-molded ABS, multi-part",
-          brief: "A palm-sized precision mechanism in the instrument panel: thin vanes pivot with a damped, premium feel; the bezel must sit flush in the IP. Small part, small tolerances, big perceived quality.",
-          env: [
-            ["Instrument panel", "Snap-in bezel, visible flush", "Flushness and uniform gap around the bezel"],
-            ["Vanes (own sub-parts)", "Pivot pins in bores", "Rotation torque = perceived quality"],
-            ["Damper & knob", "Sliding link", "Consistent effort over life"],
-            ["Airflow", "Duct sealing lips", "Leakage and whistle noise"]
-          ],
-          steps: [
-            { t: "mcq", topic: "fit", q: "Vane pivots must turn with a consistent, damped torque — forever. How is that feel engineered?", opts: ["Loose fit plus grease at assembly", "A controlled pin-to-bore fit PLUS a designed spring element (molded finger or grease-damped hub) providing preload — with the torque validated over the tolerance range", "As tight as possible; users will break it in", "Glue with a torque-limiting compound"], a: 1, ex: "Feel = friction torque = preload × radius. Relying on the raw pin/bore tolerance alone gives cars that are stiff and cars that flop; a compliant preload element keeps torque constant across the molded tolerance range." },
-            { t: "mcq", topic: "mfg", q: "A 1.2 mm-thick vane fills from a gate at one end; the flow splits around the pivot boss and rejoins behind it. Risk and fix?", opts: ["No risk — thin parts always fill fine", "A weld line right at the loaded pivot: move the gate or add an overflow tab so the weld line lands in a low-stress zone", "Paint the vane to hide the line", "Thicken the whole vane to 3 mm"], a: 1, ex: "Where flow fronts rejoin, strength can drop 30–50%+ — deadly at the pivot that takes all the handling load. Gate position steers the weld line; on precision mechanisms this is decided in design, with a filling simulation." },
-            { t: "mcq", topic: "section", q: "The thin vane needs a thick hub at the pivot. Managing that section jump?", opts: ["Step from 1.2 mm to 4 mm sharply — it's functional", "Blend gradually (≤3:1 over a distance, radii), core the hub where possible: abrupt thick sections sink, void and warp the vane like a banana", "Make the whole vane 4 mm", "Add a metal insert instead"], a: 1, ex: "Differential shrink between thin and thick regions bends the part as it cools. Gradual transitions and coring keep shrink uniform, so the vane stays straight enough for its bearing bores to line up." },
-            { t: "mcq", topic: "datum", q: "The bezel's visible flush & gap is to the instrument panel. Datum scheme for the bezel drawing?", opts: ["The vane pivots — most precise features", "The bezel's own mounting/snap interfaces to the IP — the features that physically position it in the opening", "The outer show surface — it's what the customer sees", "Any three corners"], a: 1, ex: "Same law at every scale: datums = the features the part is located BY. The show surface is what you tolerance (profile back to those datums), not what you locate from." },
-            { t: "mcq", topic: "tol", q: "A realistic general tolerance for a ~150 mm dimension on this molded ABS part?", opts: ["±0.02 mm — it's a precision part", "±0.01 mm with a good molder", "Around ±0.3 mm general (per DIN 16742 / molder capability), with only the few functional features held tighter — at cost", "Plastic parts can't hold tolerances at all"], a: 2, ex: "Molded plastics live in a wider tolerance world than machining: shrink varies with batch, moisture and process drift. Design the mechanism so most dimensions can breathe, then spend tight tolerances only on the pivots and snap interfaces." }
-          ],
-          tips: [
-            "Perceived quality is engineered: consistent torque comes from designed preload, not from hoping tolerances land.",
-            "Weld lines and section jumps are design decisions — steer them away from loaded features while gates can still move.",
-            "Spend tight tolerances only on functional plastic features; give everything else molding-realistic room."
-          ]
-        },
-        {
-          icon: "⚙️", name: "Cooling fan shroud", process: "Injection-molded PA6-GF30",
-          brief: "A large glass-filled ring that ducts air through the radiator and carries the fan motor: a spinning blade a few millimetres from your plastic, bolted to an aluminum radiator that grows at a different rate.",
-          env: [
-            ["Radiator (aluminum)", "Bolted flange, 4–6 points", "CLTE mismatch across a metre of width"],
-            ["Fan blade", "Tip clearance to the shroud ring", "Efficiency wants small gap; contact is catastrophic"],
-            ["Fan motor", "Central mount, 3 arms", "Arm stiffness sets blade position under load"],
-            ["Vibration & heat", "Engine bay environment", "GF creep, fatigue at bolt bosses"]
-          ],
-          steps: [
-            { t: "mcq", topic: "fit", q: "Fan tip clearance: efficiency wants it minimal, contact is catastrophic. What sets the minimum safe gap?", opts: ["Whatever the stylist left", "A stack-up: ring position/profile tolerance + motor mount position + blade tip runout + arm deflection under load + thermal moves — worst case must stay clear", "A constant 10 mm rule of thumb", "The molder decides"], a: 1, ex: "Tip gap is a computable stack, and the shroud's contribution enters as its profile/position tolerances about the mounting datums. This is why the ring and the motor mount must share one DRF — otherwise the stack has extra unknown links." },
-            { t: "calc", topic: "calc", kind: "floating", Fset: [6, 8] },
-            { t: "mcq", topic: "section", q: "A large, nearly flat GF30 ring panel wants to warp out of plane. Section strategy?", opts: ["Mold it dead flat and clamp it straight at assembly", "Uniform wall + rib pattern for stiffness, symmetric sections, and flow (gates) arranged so fiber orientation is balanced — accept that flatness comes from design, not from the press", "Double the wall thickness", "Anneal every part in an oven"], a: 1, ex: "Glass fiber makes shrink anisotropic: unbalanced flow = built-in warp that no process setting fully removes. Ribs, symmetry and gate layout are the flatness tolerance's real enforcers." },
-            { t: "mcq", topic: "datum", q: "Datum scheme for the shroud drawing?", opts: ["A = the ring bore, alone", "A = radiator-side mounting pads (3 targets), B–C = two of the mounting holes; ring bore and motor mount toleranced to that frame", "A = the biggest flat face wherever it is", "Datums are unnecessary on flexible plastics"], a: 1, ex: "Mounted-part law again: the radiator interface locates the shroud in the car, so it locates it on the drawing. The blade-tip stack then flows through one computable frame — pads, holes, ring, motor mount." },
-            { t: "mcq", topic: "mfg", q: "Weld lines in GF30 can drop strength ~50%. Where must they NOT fall on this part?", opts: ["Anywhere is fine — GF is strong", "On the visible side only", "On the motor-mount arms and bolt bosses — the fatigue-loaded load paths; steer gates so weld lines land in the quiet zones of the ring", "Weld lines don't occur in GF materials"], a: 2, ex: "In fiber-filled parts the weld line is a fiber-poor, weak seam. A vibrating motor on three arms is a fatigue machine: gate layout must keep weld lines off the arms and bosses — checked by simulation before tooling." }
-          ],
-          tips: [
-            "Clearance to a moving blade is a worst-case stack through ONE datum frame — design it computable.",
-            "GF parts: flatness and straightness are earned with ribs, symmetry and gate layout, not process heroics.",
-            "Fatigue + weld lines don't mix: keep flow-front meetings away from load paths."
-          ]
-        },
-        {
-          icon: "🧴", name: "Coolant expansion tank", process: "Injection-molded PP, hot-plate welded halves",
-          brief: "Two molded PP halves welded into a pressure vessel: 1.4 bar and 120 °C coolant for fifteen years. Ports, cap threads, a level sensor — and one weld seam that must never open.",
-          env: [
-            ["Coolant system", "1.4 bar @ 120 °C, cycling", "Creep-rated wall sections; burst ≥ 4× working"],
-            ["Hoses", "Barbed spigots + spring clamps", "Barb geometry and OD tolerance = retention"],
-            ["Pressure cap", "Threads + seal seat", "Seal face must be true to the thread axis"],
-            ["Body bracket", "Push-in pins + one screw", "Locating scheme on a flexible tank"]
-          ],
-          steps: [
-            { t: "mcq", topic: "mfg", q: "The two halves are hot-plate welded. What does the weld joint region need, by design?", opts: ["Two sharp edges pressed together", "Flat, parallel weld flanges perpendicular to the press direction, ~2–2.5× wall for melt, plus flash traps so molten bead stays out of sight and out of the coolant", "Glue as a backup", "A metal clamp ring"], a: 1, ex: "Hot-plate welding is a designed joint: flange area sets strength, parallelism sets even melt, flash traps capture the bead. The joint is drawn and toleranced like any functional feature — because it is one." },
-            { t: "mcq", topic: "section", q: "Internal pressure pushes on the tank's large flat side walls. Section response?", opts: ["Flat thin walls — cheapest", "Crown (curve) the walls and/or add internal ribs/tie features: flat panels balloon, creep and oil-can under 1.4 bar at 120 °C", "One very thick flat wall", "Rely on the bracket to hold the shape"], a: 1, ex: "Pressure vessels hate flat panels: curvature turns bending into membrane tension, which PP handles far better — especially in creep at temperature. Shape does the work so wall thickness (and sink risk) stays sane." },
-            { t: "mcq", topic: "fit", q: "The hose barbs: what actually keeps the hose sealed and on the spigot for 15 years?", opts: ["The hose is stretchy, anything works", "Barb OD size + form tolerance, bead geometry, surface finish, AND a defined clamp seat behind the barb — the spigot is a toleranced sealing system", "Adhesive inside the hose", "Safety wire"], a: 1, ex: "Retention = designed interference between barb OD and hose ID, held by the clamp on its seat. Molded spigot OD, ovality (circularity) and parting-line flash all sit inside that interference budget — flash across a sealing barb is a leak." },
-            { t: "mcq", topic: "tol", q: "The cap seals on a face at the top of the molded neck. The critical geometric relationship?", opts: ["The seal face must be square/true to the THREAD AXIS (runout/perpendicularity to the thread datum) — a tilted face loads the seal unevenly and weeps", "The neck's color match", "The face's distance from the tank bottom, ±2 mm", "Thread class only, the face follows"], a: 0, ex: "The cap references the threads; the seal references the face. If the face isn't controlled about the thread axis, torque seats the cap crooked and the O-ring sees a gap on one side. Datum = thread pitch cylinder, then control the face to it." },
-            { t: "mcq", topic: "datum", q: "The tank is molded in two halves that meet at the weld. How do you make sure ports, bracket pins and sensor boss line up as one part?", opts: ["Weld first, then re-machine everything true", "Design shared datum/alignment features (targets, pilot pins in the weld fixture) on BOTH halves, referenced by both half-drawings and the assembly drawing — so the halves are located the same way in molding, welding and checking", "Hope both cavities shrink identically", "Only tolerance the finished assembly"], a: 1, ex: "A welded plastic assembly is a small alignment chain: each half to its cavity, both halves to the weld fixture. Common datum features across the half drawings and the assembly drawing keep that chain computable — the same common-DRF law as everywhere else." }
-          ],
-          tips: [
-            "Welded joints, barbs and seal seats are toleranced functional systems — draw them like it.",
-            "Pressure + heat + PP = creep: let curvature and ribs carry load so walls stay moldable.",
-            "Multi-piece plastic assemblies need shared datum features across every half and fixture."
-          ]
-        }
-      ]
+  // active rAF loops / global listeners to tear down on any re-render
+  var cleanups = [];
+  function runCleanups() { cleanups.forEach(function (f) { try { f(); } catch (e) {} }); cleanups = []; }
+
+  /* ---------------- 3D primitives (pure CSS transforms) ---------------- */
+  // Build a 6-face box centred on the scene origin. Returns the element with
+  // .faces {front,back,left,right,top,bottom} and .place(x,y,z[,extra]).
+  function makeBox(w, h, d, cls) {
+    var b = el("div", "b3d " + (cls || ""));
+    b.style.width = w + "px"; b.style.height = h + "px";
+    b.style.left = (-w / 2) + "px"; b.style.top = (-h / 2) + "px";
+    var faces = {};
+    function face(fw, fh, tf, name) {
+      var f = el("div", "b3d-face f-" + name);
+      f.style.width = fw + "px"; f.style.height = fh + "px";
+      f.style.left = ((w - fw) / 2) + "px"; f.style.top = ((h - fh) / 2) + "px";
+      f.style.transform = tf;
+      b.appendChild(f); faces[name] = f; return f;
+    }
+    face(w, h, "translateZ(" + (d / 2) + "px)", "front");
+    face(w, h, "translateZ(" + (-d / 2) + "px) rotateY(180deg)", "back");
+    face(d, h, "rotateY(90deg) translateZ(" + (w / 2) + "px)", "right");
+    face(d, h, "rotateY(-90deg) translateZ(" + (w / 2) + "px)", "left");
+    face(w, d, "rotateX(90deg) translateZ(" + (h / 2) + "px)", "top");
+    face(w, d, "rotateX(-90deg) translateZ(" + (h / 2) + "px)", "bottom");
+    b.faces = faces;
+    b.place = function (x, y, z, extra) {
+      b.style.transform = "translate3d(" + (x || 0) + "px," + (y || 0) + "px," + (z || 0) + "px)" + (extra ? " " + extra : "");
+    };
+    b.place(0, 0, 0);
+    return b;
+  }
+
+  // A scene you can orbit by dragging. Returns { scene, get:()=>{rx,ry} }.
+  function scene3d(stage, rx, ry) {
+    var host = el("div", "st3d");
+    var scene = el("div", "st3d-scene");
+    host.appendChild(scene); stage.appendChild(host);
+    var hint = el("div", "st3d-hint", "⟳");
+    host.appendChild(hint);
+    var st = { rx: rx == null ? -22 : rx, ry: ry == null ? -32 : ry, d: false, x: 0, y: 0 };
+    function apply() { scene.style.transform = "rotateX(" + st.rx + "deg) rotateY(" + st.ry + "deg)"; }
+    apply();
+    function P(e) { var t = e.touches && e.touches[0]; return { x: t ? t.clientX : e.clientX, y: t ? t.clientY : e.clientY }; }
+    function down(e) { st.d = true; var p = P(e); st.x = p.x; st.y = p.y; host.classList.add("grabbing"); host.classList.add("touched"); }
+    function move(e) {
+      if (!st.d) return;
+      var p = P(e);
+      st.ry += (p.x - st.x) * 0.55;
+      st.rx = clamp(st.rx - (p.y - st.y) * 0.55, -88, 88);
+      st.x = p.x; st.y = p.y; apply();
+      if (e.cancelable) e.preventDefault();
+    }
+    function up() { st.d = false; host.classList.remove("grabbing"); }
+    host.addEventListener("mousedown", down);
+    host.addEventListener("touchstart", down, { passive: true });
+    window.addEventListener("mousemove", move);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("mouseup", up);
+    window.addEventListener("touchend", up);
+    cleanups.push(function () {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("touchmove", move);
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("touchend", up);
+    });
+    return { scene: scene, host: host };
+  }
+
+  /* ---------------- control builders ---------------- */
+  function slider(label, min, max, step, val, lang, dp, cb) {
+    var w = el("div", "wctl");
+    var l = el("label");
+    l.appendChild(el("span", null, label));
+    var v = el("span", "wval", fmt(val, lang, dp));
+    l.appendChild(v);
+    var i = el("input"); i.type = "range"; i.min = min; i.max = max; i.step = step; i.value = val;
+    i.addEventListener("input", function () {
+      v.textContent = fmt(parseFloat(i.value), lang, dp);
+      cb(parseFloat(i.value));
+    });
+    w.appendChild(l); w.appendChild(i);
+    return { el: w, get: function () { return parseFloat(i.value); }, set: function (x) { i.value = x; v.textContent = fmt(x, lang, dp); } };
+  }
+  function seg(options, initial, cb) {
+    var w = el("div", "studio-seg");
+    var buttons = [];
+    options.forEach(function (o) {
+      var b = el("button", "studio-seg-btn" + (o.k === initial ? " on" : ""), o.label);
+      b.onclick = function () {
+        buttons.forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        cb(o.k);
+      };
+      buttons.push(b); w.appendChild(b);
+    });
+    return { el: w };
+  }
+  function verdict(node, ok, text) {
+    node.className = "studio-verdict " + (ok ? "pass" : "fail");
+    node.innerHTML = (ok ? "✓ " : "✗ ") + text;
+  }
+  function warnV(node, text) { node.className = "studio-verdict warn"; node.innerHTML = "⚠ " + text; }
+
+  function readout(pairs) {
+    var w = el("div", "studio-readout");
+    pairs.forEach(function (p) {
+      var r = el("div", "studio-rd");
+      r.appendChild(el("span", "studio-rd-k", p[0]));
+      var v = el("span", "studio-rd-v", p[1]);
+      r.appendChild(v); w.appendChild(r); r._v = v;
+    });
+    w.set = function (i, val) { if (w.children[i]) w.children[i].lastChild.textContent = val; };
+    return w;
+  }
+  function svgWrap(inner, w, h) {
+    var d = el("div", "diagram studio-svg");
+    d.innerHTML = '<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '">' + inner + "</svg>";
+    return d;
+  }
+
+  /* ======================================================================
+   *  STATIONS
+   * ==================================================================== */
+  var STATIONS = [];
+
+  /* ---- Station 1 — Section & Sink -------------------------------------- */
+  STATIONS.push({
+    id: "sink", icon: "🧱",
+    name: { en: "Section & Sink", tr: "Kesit & Çöküntü" },
+    goal: {
+      en: "Add a stiffening rib behind a painted class-A surface — without printing a sink mark through the paint. Drag to orbit; find the thickness that stays invisible.",
+      tr: "Boyalı A-yüzeyin arkasına rijitlik federi ekle — boyanın içinden çöküntü izi bastırmadan. Döndürmek için sürükle; görünmez kalan kalınlığı bul."
     },
+    principle: {
+      en: "A rib thicker than ~60% of the wall it joins forms a heavy junction that cools slowly, shrinks more, and pulls a sink mark into the opposite (visible) face. Thin ribs, radii and coring keep the show surface flat — on plastics, section management <em>is</em> surface quality.",
+      tr: "Birleştiği duvarın ~%60'ından kalın bir feder, yavaş soğuyan, daha çok çeken ve karşı (görünür) yüze çöküntü izi çeken ağır bir kavşak oluşturur. İnce federler, radyüsler ve boşaltma görünür yüzü düz tutar — plastikte kesit yönetimi <em>yüzey kalitesinin ta kendisidir.</em>"
+    },
+    build: function (stage, side, lang) {
+      var s3 = scene3d(stage, -18, -34), scene = s3.scene;
+      var slabW = 210, slabH = 148;
+      var wall = 2.5, ribPct = 55;
 
-    /* ================= TÜRKÇE ================= */
-    tr: {
-      ui: {
-        navLabel: "Tasarım Stüdyosu",
-        title: "🚗 Plastik Parça Tasarım Stüdyosu",
-        intro: "Masanıza rastgele bir plastik otomobil parçası geliyor. Onu bir plastik tasarım mühendisi gibi ele alın: çevresini okuyun, datum/konumlayıcı şemasını seçin, duvarları, federleri ve bosları yönetin, boşlukları (ısıl büyüme dahil) bütçeleyin, kalıplama prosesine saygı duyun — ve hesaplanması gerekeni hesaplayın. Her turda yeni bir rastgele parça.",
-        newPart: "🎲 Rastgele parça çek",
-        anotherPart: "🎲 Başka parça çek",
-        briefTitle: "Tasarım görevi",
-        processWord: "Proses",
-        envTitle: "Arayüz haritası — bu parçayı ne çevreliyor",
-        envHeads: ["Eş parça / çevre", "Arayüz", "Neyin önemi var"],
-        stepWord: "Adım",
-        next: "Sonraki adım →",
-        finish: "Değerlendirmeyi gör →",
-        resultTitle: "Değerlendirme",
-        scoreWord: "Puan",
-        resultPass: "Sağlam iş — bu parça tasarım gözden geçirmesinden geçerdi.",
-        resultFail: "Yukarıdaki açıklamaları inceleyin, sonra yeni bir parça çekin — tasarımcı gözü tekrarla gelişir.",
-        takeaways: "Bu parçanın kilit dersleri",
-        topics: { iface: "Arayüzler ve fonksiyon", datum: "Datum ve konumlayıcılar", tol: "Toleranslama", section: "Kesit yönetimi", fit: "Boşluk ve alıştırma", calc: "Hesap", mfg: "Kalıplama ve proses" },
-        calcFloatQ: "Montaj: M{F} cıvatalar ve somunlar, HEM bu parçadaki HEM eş parçadaki ⌀{H} MMC boşluk deliklerinden geçiyor — yüzer bağlantı. Cıvata MMC = ⌀{F}.0. Her parçanın delik grubuna verilebilecek pozisyon toleransı?",
-        calcFixedQ: "Montaj: ⌀{F}.0 MMC elemanlar/klipsler bir parçaya sabitlenmiş; karşı delikler ⌀{H} MMC — sabit bağlantı. Her parçanın deseni için pozisyon toleransı?",
-        calcFloatEx: "Yüzer bağlantı: T = H − F = {H} − {F}.0 = her parça için ⌀{T}, Ⓜ ile uygulanır.",
-        calcFixedEx: "Sabit bağlantı: T = (H − F)/2 = ({H} − {F}.0)/2 = parça başına ⌀{T}, Ⓜ ile — plastikte kalıplanmış deliklere cömert boşluk verilmesinin nedeni tam da desenlerin bu alana ihtiyaç duymasıdır."
-      },
-      parts: [
-        {
-          icon: "🛡️", name: "Tampon kaplaması", process: "Enjeksiyon PP/EPDM, boyalı",
-          brief: "1,8 metrelik esnek, boyalı, müşterinin gördüğü bir kabuk: çelik çamurluklar ve farlarla kusursuz boşluklarda buluşmalı — üstelik rijit bir parça gibi ölçülemeyecek kadar esnekken ve her yaz milimetrelerce büyürken.",
-          env: [
-            ["Çelik çamurluklar", "İki yanda görünür boşluk ve hiza", "CLTE farkı: PP çelikten ~10 kat fazla genleşir"],
-            ["Farlar", "Görünür ayrım çizgisi", "Üç parça arasında boşluk dengesi"],
-            ["Panjur / trim ekleri", "Snap-fit açıklıkları", "Alttan kesmeler kalıpta maça ister"],
-            ["Gövde braketleri", "Vidalar + kayar klipsler", "Parçanın tutulduğu — ve hareket edebileceği — yerler"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "1,8 m'lik esnek tampon kendi ağırlığıyla sarkar. Nasıl ölçülendirilir ve ölçülür?", opts: ["Yalnızca serbest halde — granit masada işlenmiş blok gibi", "Kısıtlanmış halde: gövde bağlantılarını taklit eden datum HEDEFLERİNE mengenelenmiş, kısıtlama resimde belgelenmiş olarak", "Rijitleşene kadar kalınlaştır, sonra 3-2-1 uygula", "Datum gerekmez — göz kontrolü yeter"], a: 1, ex: "Esnek parçalar kısıtlanmış durumda toleranslanır: datum hedefleri gerçek gövde bağlantı noktalarını kopyalar, resim mengenelemeyi belirtir, kontrol fikstürü aracı yeniden kurar. Serbest hal ölçümleri kural değil, belgelenmiş istisnadır (Ⓕ)." },
-            { t: "mcq", topic: "fit", q: "Çelik gövdede PP: ~1 m açıklık, −30…+80 °C. Tampon, boşluk vermesi gereken çamurluktan milimetrelerce fazla büyür. Tasarım yanıtı?", opts: ["Hareket edemesin diye boşluk toleransını sık", "Parçayı her brakette rijit sabitle", "MERKEZİ sabitle, uçları kayar bağlantılarda yüzdür — ısıl büyümeye tasarlanmış bir yön ver ve nominal boşlukları sıcak/soğuk çalış", "PP'ye çelik dolgu şart koş"], a: 2, ex: "ΔL = α·L·ΔT ≈ (150−12)·10⁻⁶ × 1000 mm × 60 °C ≈ 8 mm bağıl hareket. Bunu toleransla yok edemezsiniz: tek ankraj noktası + kayar bağlantılar büyümeyi yönlendirir; boşluk etüdü sıcaklık uçlarında koşulur." },
-            { t: "mcq", topic: "section", q: "Boyalı A-yüzeyin hemen arkasına rijitlik federi gerekiyor. Kesit kuralı?", opts: ["Feder kalınlığı ≈ birleştiği duvarın %50–60'ı, cömert radyüs, ya da federi arkadan boşalt — A-yüzeyde çöküntü izi sevkiyat engelidir", "Mukavemet için duvar kalınlığında feder", "Çift kalınlıkta feder, üstü boyanır", "Tampona asla feder atılmaz"], a: 0, ex: "Kalın feder kökü lokal ağır kesit yaratır: daha çok çeker ve boyanın içinden çöküntü izi basar. İnce federler (%50–60), radyüsler ve boşaltma görünür yüzü düz tutar — plastikte kesit yönetimi, yüzey kalitesinin ta kendisidir." },
-            { t: "mcq", topic: "mfg", q: "Tampon birden çok yolluktan dolar; akış cepheleri bir yerde buluşur. Birleşme çizgileri hem zayıf hem görünürdür. Tasarımcının hamlesi?", opts: ["Birleşme çizgisi kalıpçının derdi, resmin değil", "Kalıptan sonra polisajla silinir", "Takım kesilmeden ÖNCE kalıpçıyla yolluk konumlarına çalış: birleşme çizgileri gizli, düşük gerilimli bölgelere (plaka yuvası arkası, trim altı) düşsün", "Her yere daha çok yolluk ekle"], a: 2, ex: "Birleşme çizgilerinin yerini yolluk düzeni belirler; takım kesildikten sonra sabittir. Dolum simülasyonunu öne almak ve çizgileri görünür/darbe yüklü bölgelerden uzağa yönlendirmek üretim sonrası bir çare değil, tasarım işidir." },
-            { t: "mcq", topic: "tol", q: "Profil |1,0|A|B|C kısıtlanmış halde geçerli. Lojistik, sevkiyat rafına sığması için parçanın mengenesiz halde de 3,0 içinde kalmasını istiyor. Bu nasıl yazılır?", opts: ["'Dikkatli olun' diye bir not", "Kısıtlanmış olanın yanına Ⓕ (serbest hal) işaretli ikinci, daha gevşek bir profil kontrolü", "İmkânsız — bir parçanın iki profili olmaz", "Serbest şekil için ± ölçüler"], a: 1, ex: "Esnek parçalarda çift kontrol standarttır: sıkı profil datum hedeflerinde kısıtlanmış halde geçerlidir; gevşek Ⓕ profili serbest hal şeklini sınırlar. İki gereksinim, iki koşul; ikisi de ölçülebilir." }
-          ],
-          tips: [
-            "Esnek parça = gövdeyi kopyalayan hedeflerde kısıtlanmış datumlar; serbest hal istisnalarını Ⓕ işaretler.",
-            "CLTE bir tasarım girdisidir: bir noktayı sabitle, gerisini kaydır; boşluk etüdünü sıcak ve soğukta koş.",
-            "A-yüzey plastiğinde boyalı yüzeyi düz tutan şey kesit yönetimidir (feder %, radyüs, boşaltma)."
-          ]
-        },
-        {
-          icon: "💡", name: "Far braketi", process: "Enjeksiyon kalıplama, PA6-GF30",
-          brief: "Farı çamurluk, tampon ve panjur arasında konumlar — üç görünür boşluk tek köşede buluşur. Tolerans zincirleri ve cam elyaflı kalıplama üzerine bir ustalık dersi.",
-          env: [
-            ["Radyatör traversi", "Vidalar + konumlama pimleri", "Braketin kendi montaj datumları"],
-            ["Far gövdesi", "Klipsler + vidalar", "Far pozisyonu = braket pozisyonu"],
-            ["Çamurluk kenarı", "Görünür 3,5 ± 0,5 boşluk", "Her müşterinin gördüğü boşluk"],
-            ["Tampon / panjur", "İki görünür arayüz daha", "Boşluklar yalnız şartta değil, dengede de olmalı"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "Far, çamurluk ve tampon tek görünür köşede hizalanmalı. Kazanan datum stratejisi?", opts: ["Her parça en yakın komşusuna konumlansın", "Zincirle: çamurluk→braket→far→tampon", "Farı, çamurluğu ve tamponu AYNI gövde referans noktalarından konumla — ortak DRF zincirleri keser", "Hat işçileri hizalasın"], a: 2, ex: "Parçadan parçaya her halka, toleranslarını görünür boşluğa ekler. Boşluğu oluşturan tüm parçaları ortak ana referanslardan (ortak gövde datumları) konumlamak, görsel kalite tasarımının en güçlü hamlesidir." },
-            { t: "mcq", topic: "section", q: "Kalıplanmış braket duvarları için kesit kuralı?", opts: ["Her yerde homojen nominal duvar (~2,5 mm); rijitlik gereken yerde duvardan İNCE federler", "Yük noktalarında kalın bloklar, gerisi ince", "Mukavemet için sabit 6 mm", "CAD'in ürettiği radyüsler neyse o"], a: 0, ex: "Enjeksiyonda homojen olmayan kesit çökme, boşluk ve çarpılma üretir — bunlar tam da toleransladığınız pozisyonları yok eder. Feder kalınlığı ≈ birleştiği duvarın %60'ı: görünür yüzde çökme izi olmasın." },
-            { t: "mcq", topic: "mfg", q: "PA6-GF30 (%30 cam elyaf) elyaf akışı boyunca ve enine farklı çeker. Tasarım sonucu?", opts: ["Sonucu yok — çekme çekmedir", "Çarpılma, yolluk konumuna ve akış yönüne bağlıdır: kritik konumlama unsurları akışın (ve kalıpçının) doğru tutabileceği yerde olmalı — resim toleransları da buna saygı duymalı", "Cam elyaf çekmeyi tamamen kaldırır", "Yalnızca renk etkilenir"], a: 1, ex: "Anizotropik çekme, kalıp ile parçanın birlikte tasarlanması demektir: yolluk yeri, akış yönü ve ulaşılabilir profil toleransları resim yayınlanmadan ÖNCE kalıpçıyla kararlaştırılır." },
-            { t: "mcq", topic: "fit", q: "Boşluk bütçesi: çamurluk boşluğu 3,5 ± 0,5 mm ve braket zincirdeki 4 katkıdan biri. En kötü durumda brakete ne düşer?", opts: ["±0,5 — toplamla aynı", "±0,5'in kabaca payı (eşit bölünse ≈±0,12) — zinciri ortak datumla ya da ayarcıyla kesmediyseniz", "±1,0 — plastik parçaya fazlası gerekir", "Boşluk bütçesi kalite kontrolün derdi"], a: 1, ex: "En kötü durum stack'i bütçeyi katkılara böler. Plastik parçada ±0,12 pahalıdan imkânsıza gider — datum stratejisi (zinciri kes) ve ayar unsurları tam da bu yüzden vardır." },
-            { t: "mcq", topic: "tol", q: "Braketin farı konumlayan yüzeyleri (pimler, pedler, klips yuvaları): doğal kontrol hangisi?", opts: ["Her pimde dairesellik", "Parça kenarlarından ± doğrusal ölçüler", "Her şeye düzlemsellik", "Hepsi braketin montaj datumlarına (travers arayüzü) referanslı yüzey profili / pozisyon"], a: 3, ex: "Farı konumlayan unsurlar, braketi konumlayan unsurlara kontrol edilir — montaj arayüzünden tek DRF; biçimli yuvalara profil, pimlere pozisyon. Zincir uçtan uca hesaplanabilir kalır." }
-          ],
-          tips: [
-            "Görünür boşluk tasarımı: tek bir toleransı sıkmadan önce zincirleri ortak datumlarla kısaltın.",
-            "Plastik kesit: homojen duvar, ~%60 feder — yoksa çökme/çarpılma pozisyon toleranslarınızı yer.",
-            "Elyaf dolgulu plastikte resim ve kalıp birlikte tasarlanır — kalıpçıyla erken konuşun."
-          ]
-        },
-        {
-          icon: "🚪", name: "Kapı trim paneli", process: "Enjeksiyon ABS, desenli (grenli)",
-          brief: "Yolcunun her gün dokunduğu büyük görünür panel: çelik kapıya klipslenir, cam düğmesi çerçevesini ve hoparlör ızgarasını taşır — ve asla gıcırdamamalı, tıkırdamamalı, greninden çöküntü izi göstermemeli.",
-          env: [
-            ["Çelik kapı içi", "Klips deseni + bir vida", "Konumlayıcı şeması ve klips pozisyon toleransları"],
-            ["Düğme çerçevesi / ızgara", "Snap-fit alt parçalar", "Panelin üzerindeki görünür alt boşluklar"],
-            ["Yolcu", "Grenli A-yüzey, dokunma yükleri", "Çöküntü izi, rijitlik, gıcırtı ve tıkırtı"],
-            ["Cam ve fitiller", "Panelin arkasında hareketli cam", "Hareketli parçalara boşluk"]
-          ],
-          steps: [
-            { t: "mcq", topic: "datum", q: "Konumlayıcı şeması: bir yuvarlak pim (4 yön), bir OVAL yuva (2 yön) ve yüzey pedleri. Neden ikinci yuvarlak pim değil de oval yuva?", opts: ["Oval yuva kalıplamada daha ucuz", "İki yuvarlak pim aşırı kısıtlar: adım sapması ve ısıl büyüme pimlerle savaşıp paneli çarpıtırdı — oval yuva bir yönde konumlar, diğerini serbest bırakır", "Oval yuva su tahliyesi için", "Stil bölümü istedi"], a: 1, ex: "4 yön pimi X-Y'yi sabitler; 2 yön yuvası dönmeyi sabitler ama pimden pime mesafeyi serbest bırakır — kalıp sapması ile CLTE tam orada yaşar. Pim + oval yuva, plastik trim konumlamanın STANDART şemasıdır." },
-            { t: "calc", topic: "calc", kind: "fixed", Fset: [6, 8] },
-            { t: "mcq", topic: "section", q: "Grenli yüzeyin arkasına sac vidası bosu gerekiyor. Doğru bos tasarımı?", opts: ["Dolu silindir — azami diş kavraması", "Bos duvarı ≈ nominal duvarın %60'ı, içi boşaltılmış, duvara dolu kütle yerine ince gusetlerle bağlanmış", "Bosu kalın kökle doğrudan A-yüzey duvarına bağla", "Bos ne kadar uzun, o kadar iyi"], a: 1, ex: "Dolu ya da kalın köklü bos ağır bir kesittir: görünür grenin içinden çöker ve içten boşluk yapar. Boşaltılmış bos + ince gusetler, silüetini A-yüze basmadan vida tutması verir." },
-            { t: "mcq", topic: "mfg", q: "Görünür yüz deri deseni (gren) taşıyor. Çekme açılarına etkisi?", opts: ["Yok — desen kozmetiktir", "Desenli duvarlar DAHA ÇOK eğim ister: taban eğimin üstüne, kabaca her 0,025 mm gren derinliği için +1° — yoksa itici, greni çizerek parlak izler bırakır", "Desen sıfır eğime izin verir", "Eğim yalnızca federlerde önemli"], a: 1, ex: "Gren, binlerce minik alttan kesmedir. Ek eğim olmadan desen çıkarmada sürter ve parlak sıyrık izleri bırakır — tasarımcının ilk günden önlediği klasik geç-kalıp krizi." },
-            { t: "mcq", topic: "fit", q: "Panel kenarı metal kapı çerçevesine yakın: temas (gıcırtı-tıkırtı) riski nasıl yönetilir?", opts: ["Nominal sıfır boşluk — 'tam değiyor' en iyi görünür", "Ya TASARLANMIŞ bir boşluk (stack ile asla kapanmadığı kanıtlı) ya da yumuşak bir eleman (sünger, keçe, floklama) üzerinden tasarlanmış bir ön yük — asla tesadüfi temas", "Garanti olsun diye her yerde 5 mm bırak", "Gıcırtı garanti sorunudur, tasarım değil"], a: 1, ex: "Gıcırtı-tıkırtı mühendisliği yalnızca iki güvenli durum bilir: garantili boşluk ya da uyumlu katman üzerinden garantili ön yük. Seçtiğinizi tolerans stack'i kanıtlamalı; 'nominalde değiyor' araçların yarısında ses garantisidir." }
-          ],
-          tips: [
-            "Pim + oval yuva + pedler: plastiği aşırı kısıtlamadan konumlayın; kalıp sapması ve CLTE'nin gidecek yeri olsun.",
-            "Bos ve federler %60 kuralına uyar ve A-yüzey duvarından uzak durur — çöküntüsüz tutma.",
-            "Gıcırtı-tıkırtı: kanıtlı boşluk ya da kanıtlı ön yük tasarlayın; arası gürültüdür."
-          ]
-        },
-        {
-          icon: "🌬️", name: "Klima havalandırma ızgarası", process: "Enjeksiyon ABS, çok parçalı",
-          brief: "Torpidoda avuç içi kadar bir hassas mekanizma: ince kanatlar sönümlü, premium bir hisle döner; çerçeve torpidoya sıfır oturmalı. Küçük parça, küçük toleranslar, büyük algılanan kalite.",
-          env: [
-            ["Torpido paneli", "Geçmeli çerçeve, görünür hiza", "Çerçeve çevresinde hiza ve eşit boşluk"],
-            ["Kanatlar (alt parçalar)", "Yuvalarda pivot pimleri", "Dönme torku = algılanan kalite"],
-            ["Damper ve topuz", "Kayar bağlantı", "Ömür boyu tutarlı kuvvet"],
-            ["Hava akışı", "Kanal sızdırmazlık dudakları", "Kaçak ve ıslık sesi"]
-          ],
-          steps: [
-            { t: "mcq", topic: "fit", q: "Kanat pivotları tutarlı, sönümlü bir torkla dönmeli — hep. Bu his nasıl mühendislenir?", opts: ["Gevşek alıştırma + montajda gres", "Kontrollü pim-delik alıştırması ARTI ön yük veren tasarlanmış bir yay elemanı (kalıplanmış parmak ya da gresli göbek) — tork, tolerans aralığı boyunca doğrulanır", "Olabildiğince sıkı; kullanıcı alıştırır", "Tork sınırlayıcı yapıştırıcıyla yapıştır"], a: 1, ex: "His = sürtünme torku = ön yük × yarıçap. Yalnız ham pim/delik toleransına güvenmek, kimi araçta sert kimi araçta bomboş kanat verir; esnek ön yük elemanı torku kalıp tolerans aralığında sabit tutar." },
-            { t: "mcq", topic: "mfg", q: "1,2 mm'lik kanat tek uçtaki yolluktan dolar; akış pivot bosunun etrafından ayrılıp arkasında birleşir. Risk ve çözüm?", opts: ["Risk yok — ince parçalar hep iyi dolar", "Yüklü pivotta tam bir birleşme çizgisi: yolluğu taşı ya da taşma sekmesi ekle — çizgi düşük gerilimli bölgeye düşsün", "Kanadı boyayıp çizgiyi gizle", "Bütün kanadı 3 mm yap"], a: 1, ex: "Akış cephelerinin birleştiği yerde mukavemet %30–50+ düşebilir — bütün kullanım yükünü taşıyan pivotta ölümcül. Birleşme çizgisini yolluk konumu yönlendirir; hassas mekanizmalarda bu, dolum simülasyonuyla tasarımda kararlaştırılır." },
-            { t: "mcq", topic: "section", q: "İnce kanat pivotta kalın göbek istiyor. Bu kesit sıçraması nasıl yönetilir?", opts: ["1,2'den 4 mm'ye keskin geç — fonksiyonel", "Kademeli geçiş (mesafeye yayılmış, radyüslü) ve mümkünse göbeği boşalt: ani kalın kesit çöker, boşluk yapar ve kanadı muz gibi çarpıtır", "Bütün kanadı 4 mm yap", "Metal insert ekle"], a: 1, ex: "İnce ve kalın bölgeler arasındaki farklı çekme, parça soğurken onu büker. Kademeli geçiş ve boşaltma çekmeyi homojen tutar; kanat, yatak delikleri hizalanacak kadar düz kalır." },
-            { t: "mcq", topic: "datum", q: "Çerçevenin görünür hizası ve boşluğu torpidoya göre. Çerçeve resmi için datum şeması?", opts: ["Kanat pivotları — en hassas unsurlar", "Çerçevenin torpidoya kendi montaj/geçme arayüzleri — parçayı açıklıkta fiziksel olarak konumlayan unsurlar", "Dış görünen yüzey — müşterinin gördüğü o", "Herhangi üç köşe"], a: 1, ex: "Her ölçekte aynı yasa: datumlar = parçanın KONUMLANDIĞI unsurlar. Görünen yüzey, o datumlara toleranslanan şeydir (profil); konumlama kaynağı değil." },
-            { t: "mcq", topic: "tol", q: "Bu kalıplanmış ABS parçada ~150 mm'lik bir ölçü için gerçekçi genel tolerans?", opts: ["±0,02 mm — hassas parça bu", "İyi bir kalıpçıyla ±0,01 mm", "Genelde ±0,3 mm civarı (DIN 16742 / kalıpçı kabiliyeti); yalnızca birkaç fonksiyonel unsur — bedeli ödenerek — daha sıkı tutulur", "Plastik parça tolerans tutamaz"], a: 2, ex: "Kalıplanmış plastik, talaşlı imalattan daha geniş bir tolerans dünyasında yaşar: çekme; parti, nem ve proses kaymasıyla değişir. Mekanizmayı çoğu ölçü nefes alabilecek şekilde tasarlayın; sıkı toleransı yalnızca pivotlara ve geçme arayüzlerine harcayın." }
-          ],
-          tips: [
-            "Algılanan kalite mühendisliktir: tutarlı tork, toleransların denk gelmesinden değil tasarlanmış ön yükten gelir.",
-            "Birleşme çizgileri ve kesit sıçramaları tasarım kararıdır — yolluklar oynayabiliyorken yüklü unsurlardan uzaklaştırın.",
-            "Sıkı toleransı yalnızca fonksiyonel plastik unsurlara harcayın; gerisine kalıp gerçekçisi alan verin."
-          ]
-        },
-        {
-          icon: "⚙️", name: "Fan davlumbazı", process: "Enjeksiyon kalıplama, PA6-GF30",
-          brief: "Havayı radyatörden geçiren ve fan motorunu taşıyan büyük, cam elyaflı bir halka: plastiğinizden birkaç milimetre ötede dönen bir kanat — ve farklı oranda genleşen alüminyum bir radyatöre cıvatalı.",
-          env: [
-            ["Radyatör (alüminyum)", "Cıvatalı flanş, 4–6 nokta", "Bir metrelik genişlikte CLTE farkı"],
-            ["Fan kanadı", "Halkaya uç boşluğu", "Verim küçük boşluk ister; temas felakettir"],
-            ["Fan motoru", "3 kollu merkez bağlantı", "Kol rijitliği yük altında kanat pozisyonunu belirler"],
-            ["Titreşim ve ısı", "Motor bölmesi ortamı", "GF sünme, cıvata boslarında yorulma"]
-          ],
-          steps: [
-            { t: "mcq", topic: "fit", q: "Fan ucu boşluğu: verim minimum ister, temas felakettir. Güvenli asgari boşluğu ne belirler?", opts: ["Stilistin bıraktığı neyse o", "Bir stack-up: halka pozisyon/profil toleransı + motor bağlantı pozisyonu + kanat ucu salgısı + yük altında kol esnemesi + ısıl hareketler — en kötü durum temassız kalmalı", "Sabit 10 mm el kuralı", "Kalıpçı karar verir"], a: 1, ex: "Uç boşluğu hesaplanabilir bir stack'tir ve davlumbazın katkısı, montaj datumlarına göre profil/pozisyon toleransı olarak girer. Halka ile motor bağlantısının tek DRF paylaşması bu yüzden şarttır — yoksa stack'e bilinmeyen halkalar eklenir." },
-            { t: "calc", topic: "calc", kind: "floating", Fset: [6, 8] },
-            { t: "mcq", topic: "section", q: "Büyük, neredeyse düz bir GF30 halka panel düzlem dışına çarpılmak ister. Kesit stratejisi?", opts: ["Dümdüz kalıpla, montajda mengeneleyip düzelt", "Homojen duvar + rijitlik için feder deseni, simetrik kesitler ve elyaf yönelimi dengeli olsun diye akış (yolluk) düzeni — düzlemselliğin presten değil tasarımdan geldiğini kabul et", "Duvar kalınlığını ikiye katla", "Her parçayı fırında gerginlik gider"], a: 1, ex: "Cam elyaf çekmeyi anizotrop yapar: dengesiz akış = hiçbir proses ayarının tam silemeyeceği yerleşik çarpılma. Federler, simetri ve yolluk düzeni, düzlemsellik toleransının gerçek bekçileridir." },
-            { t: "mcq", topic: "datum", q: "Davlumbaz resmi için datum şeması?", opts: ["Yalnızca halka deliği A olsun", "A = radyatör tarafı montaj pedleri (3 hedef), B–C = montaj deliklerinden ikisi; halka ve motor bağlantısı bu çerçeveye toleranslanır", "A = neredeyse en büyük düz yüzey", "Esnek plastikte datum gereksiz"], a: 1, ex: "Yine montajlı parça yasası: davlumbazı araçta radyatör arayüzü konumlar, öyleyse resimde de o konumlar. Kanat ucu stack'i böylece tek hesaplanabilir çerçeveden akar — pedler, delikler, halka, motor bağlantısı." },
-            { t: "mcq", topic: "mfg", q: "GF30'da birleşme çizgileri mukavemeti ~%50 düşürebilir. Bu parçada NEREYE düşmemeli?", opts: ["Fark etmez — GF sağlamdır", "Yalnızca görünür yüze düşmesin", "Motor bağlantı kollarına ve cıvata boslarına — yorulma yüklü yük yollarına; yollukları çizgiler halkanın sakin bölgelerine düşecek şekilde yönlendir", "GF malzemede birleşme çizgisi olmaz"], a: 2, ex: "Elyaf dolgulu parçada birleşme çizgisi, elyafça fakir zayıf bir dikiştir. Üç kol üstünde titreşen motor bir yorulma makinesidir: yolluk düzeni çizgileri kollardan ve boslardan uzak tutmalı — takımdan önce simülasyonla doğrulanır." }
-          ],
-          tips: [
-            "Hareketli kanada boşluk, TEK datum çerçevesinden geçen en kötü durum stack'idir — hesaplanabilir tasarlayın.",
-            "GF parçada düzlemsellik federle, simetriyle ve yolluk düzeniyle kazanılır; proses kahramanlığıyla değil.",
-            "Yorulma ile birleşme çizgisi bir araya gelmez: akış buluşmalarını yük yollarından uzak tutun."
-          ]
-        },
-        {
-          icon: "🧴", name: "Genleşme deposu", process: "Enjeksiyon PP, sıcak plaka kaynaklı iki yarım",
-          brief: "Kaynakla basınçlı kaba dönüşen iki PP yarım: on beş yıl boyunca 1,4 bar ve 120 °C soğutma sıvısı. Hortum ağızları, kapak dişleri, seviye sensörü — ve asla açılmaması gereken tek bir kaynak dikişi.",
-          env: [
-            ["Soğutma sistemi", "1,4 bar @ 120 °C, döngülü", "Sünmeye göre duvar kesitleri; patlama ≥ 4× çalışma"],
-            ["Hortumlar", "Tırnaklı ağızlar + yaylı kelepçeler", "Tırnak geometrisi ve dış çap toleransı = tutma"],
-            ["Basınç kapağı", "Dişler + sızdırmazlık oturağı", "Sızdırmazlık yüzü diş eksenine gerçek olmalı"],
-            ["Gövde braketi", "Geçme pimler + bir vida", "Esnek depoda konumlama şeması"]
-          ],
-          steps: [
-            { t: "mcq", topic: "mfg", q: "İki yarım sıcak plaka ile kaynaklanıyor. Kaynak bölgesi tasarım olarak ne ister?", opts: ["Bastırılan iki keskin kenar", "Pres yönüne dik, düz ve paralel kaynak flanşları (ergiyik için ~2–2,5× duvar) artı çapak tuzakları: ergiyik hem gözden hem soğutma sıvısından uzak kalsın", "Yedek olarak yapıştırıcı", "Metal kelepçe halkası"], a: 1, ex: "Sıcak plaka kaynağı tasarlanmış bir bağlantıdır: flanş alanı mukavemeti, paralellik eşit ergimeyi belirler; çapak tuzakları boncuğu yakalar. Bağlantı, herhangi bir fonksiyonel unsur gibi çizilir ve toleranslanır — çünkü öyledir." },
-            { t: "mcq", topic: "section", q: "İç basınç deponun büyük düz yan duvarlarını iter. Kesit yanıtı?", opts: ["Düz ince duvarlar — en ucuzu", "Duvarları bombele (eğrilt) ve/veya iç feder/bağ elemanları ekle: düz paneller 120 °C'de 1,4 bar altında balonlaşır, süner ve 'teneke' sesi yapar", "Tek çok kalın düz duvar", "Şekli braket tutsun"], a: 1, ex: "Basınçlı kaplar düz panel sevmez: eğrilik, eğilmeyi membran çekmesine çevirir — PP bunu, özellikle sıcakta sünmede, çok daha iyi taşır. İşi biçim yapar; duvar kalınlığı (ve çökme riski) makul kalır." },
-            { t: "mcq", topic: "fit", q: "Hortum tırnakları: hortumu 15 yıl boyunca ağızda sızdırmaz tutan gerçekte nedir?", opts: ["Hortum esnek, her şey uyar", "Tırnak dış çap boyutu + form toleransı, boncuk geometrisi, yüzey durumu VE tırnağın arkasında tanımlı kelepçe oturağı — ağız, toleranslı bir sızdırmazlık sistemidir", "Hortumun içine yapıştırıcı", "Emniyet teli"], a: 1, ex: "Tutma = tırnak dış çapı ile hortum iç çapı arasındaki tasarlanmış girişim; kelepçe onu oturağında tutar. Kalıplanan ağız çapı, ovallik (dairesellik) ve ayırma çizgisi çapağı bu girişim bütçesinin içindedir — sızdırmazlık tırnağının üstünden geçen çapak, kaçaktır." },
-            { t: "mcq", topic: "tol", q: "Kapak, kalıplanmış boyun tepesindeki bir yüzeyde sızdırmazlık yapar. Kritik geometrik ilişki?", opts: ["Sızdırmazlık yüzü DİŞ EKSENİNE dik/gerçek olmalı (diş datumuna salgı/diklik) — eğik yüz contayı dengesiz yükler ve terletir", "Boynun renk uyumu", "Yüzün depo tabanına mesafesi, ±2 mm", "Yalnız diş kalitesi; yüz peşinden gelir"], a: 0, ex: "Kapak dişlere, sızdırmazlık yüze referans verir. Yüz diş eksenine göre kontrol edilmezse tork kapağı yamuk oturtur ve O-ring bir tarafta boşluk görür. Datum = diş bölüm silindiri; yüz ona kontrol edilir." },
-            { t: "mcq", topic: "datum", q: "Depo, kaynakta buluşan iki yarım olarak kalıplanıyor. Ağızlar, braket pimleri ve sensör bosu tek parça gibi nasıl hizalanır?", opts: ["Önce kaynakla, sonra hepsini yeniden işle", "HER İKİ yarımda ortak datum/hizalama unsurları (hedefler, kaynak fikstürü pilot pimleri) tasarla; iki yarım resmi ve montaj resmi aynı unsurlara referans versin — yarımlar kalıpta, kaynakta ve kontrolde hep aynı şekilde konumlansın", "İki gözün de aynı çekmesini um", "Yalnız bitmiş montajı toleransla"], a: 1, ex: "Kaynaklı plastik montaj küçük bir hizalama zinciridir: her yarım kendi göz boşluğuna, iki yarım kaynak fikstürüne. Yarım resimleri ile montaj resminde ortak datum unsurları bu zinciri hesaplanabilir tutar — her yerdeki ortak-DRF yasasının ta kendisi." }
-          ],
-          tips: [
-            "Kaynak bağlantıları, tırnaklar ve sızdırmazlık oturakları toleranslı fonksiyonel sistemlerdir — öyle çizin.",
-            "Basınç + ısı + PP = sünme: yükü eğrilik ve federler taşısın ki duvarlar kalıplanabilir kalsın.",
-            "Çok parçalı plastik montajlar, her yarımda ve fikstürde ortak datum unsurları ister."
-          ]
+      var slab = makeBox(slabW, slabH, 44, "part-slab");
+      var sink = el("div", "sink-mark"); slab.faces.front.appendChild(sink);
+      var ribD = 60;
+      var rib = makeBox(1, 108, ribD, "part-rib");
+      scene.appendChild(rib); scene.appendChild(slab);
+
+      var xsec = svgWrap("", 260, 150);
+      stage.appendChild(xsec);
+
+      var out = readout([["", ""], ["", ""], ["", ""], ["", ""]]);
+      var vv = el("div", "studio-verdict");
+      var t = lang === "tr"
+        ? { wall: "Duvar kalınlığı", rib: "Feder kalınlığı (duvarın %'si)", ribmm: "Feder = ", mass: "Kavşak kütlesi", sink: "Çöküntü derinliği", pass: "Feder duvarın %{p}'i (≤ %60) → A-yüzey düz kalır.", fail: "Feder %{p} > %60 → ~{s} µm çöküntü boyanın içinden görünür.", warn: "Feder %{p} > %60 → çöküntü izi başlıyor.", um: " µm", showlabel: "A-YÜZEY (boyalı)", riblabel: "feder", hot: "sıcak nokta" }
+        : { wall: "Wall thickness", rib: "Rib thickness (% of wall)", ribmm: "Rib = ", mass: "Junction mass", sink: "Sink depth", pass: "Rib is {p}% of wall (≤ 60%) → show surface stays flat.", fail: "Rib {p}% > 60% → ~{s} µm sink telegraphs through the paint.", warn: "Rib {p}% > 60% → sink mark beginning.", um: " µm", showlabel: "CLASS-A (painted)", riblabel: "rib", hot: "hot spot" };
+
+      function recompute() {
+        var ribT = wall * ribPct / 100;          // mm
+        var over = Math.max(0, ribPct - 60);
+        var sinkUm = over * 3.0 * (wall / 2.5);   // schematic
+        // 3D display sizes (decoupled from metric scale so it reads as a thin panel)
+        var wallPx = 22 + wall * 9;               // panel thickness
+        var ribPx = 8 + ribPct * 0.48;            // rib fin thickness, grows with %
+        rebuildDepth(slab, slabW, slabH, wallPx);
+        rebuildDepth(rib, ribPx, 108, ribD);
+        rib.place(0, 8, -(wallPx / 2 + ribD / 2));
+        var op = clamp(sinkUm / 130, 0, 0.82);
+        sink.style.opacity = op;
+        sink.style.width = sink.style.height = clamp(ribPx * 2.4, 60, 190) + "px";
+        // cross-section (exact geometry, in mm)
+        xsec.querySelector("svg").innerHTML = xsecSink(wall, ribT, over, t);
+        // readout + verdict
+        out.set(0, fmt(wall, lang, 1) + " mm");
+        out.set(1, fmt(ribT, lang, 2) + " mm");
+        out.set(2, fmt(1 + over / 40, lang, 2) + "×");
+        out.set(3, fmt(sinkUm, lang, 0) + t.um);
+        var p = Math.round(ribPct);
+        if (ribPct <= 60) verdict(vv, true, t.pass.replace("{p}", p));
+        else if (sinkUm < 20) warnV(vv, t.warn.replace("{p}", p));
+        else verdict(vv, false, t.fail.replace("{p}", p).replace("{s}", Math.round(sinkUm)));
+      }
+
+      var sWall = slider(t.wall, 1.5, 4, 0.1, wall, lang, 1, function (v) { wall = v; recompute(); });
+      var sRib = slider(t.rib, 30, 120, 1, ribPct, lang, 0, function (v) { ribPct = v; recompute(); });
+      side.appendChild(sWall.el); side.appendChild(sRib.el);
+      side.appendChild(vv); side.appendChild(out);
+      recompute();
+    }
+  });
+
+  function xsecSink(wmm, rmm, over, t) {
+    var W = 260, H = 150, cx = 130, wallY = 46, wallH = Math.max(8, wmm * 14), wallX0 = 24, wallX1 = 236;
+    var ribW = Math.max(8, rmm * 14), ribX0 = cx - ribW / 2, ribX1 = cx + ribW / 2, ribBot = 132;
+    var mass = Math.max(6, (over) * 0.5 + Math.min(wallH, ribW) * 0.55);
+    var dip = Math.min(12, over * 0.35);
+    var showY = wallY;
+    var s = "";
+    // show surface (top) with a dip when sinking
+    s += '<text x="' + cx + '" y="16" text-anchor="middle" class="d-softtext" font-size="10">' + t.showlabel + "</text>";
+    var mid = dip > 0.5
+      ? "M" + wallX0 + " " + showY + " L" + (cx - 40) + " " + showY + " Q" + cx + " " + (showY + dip * 2) + " " + (cx + 40) + " " + showY + " L" + wallX1 + " " + showY
+      : "M" + wallX0 + " " + showY + " L" + wallX1 + " " + showY;
+    s += '<path d="' + mid + '" class="d-stroke" fill="none" stroke-width="2.2"/>';
+    // wall body
+    s += '<path d="M' + wallX0 + " " + (showY + wallH) + " L" + wallX1 + " " + (showY + wallH) + '" class="d-soft" fill="none" stroke-width="1.4"/>';
+    s += '<rect x="' + wallX0 + '" y="' + showY + '" width="' + (wallX1 - wallX0) + '" height="' + wallH + '" class="d-zone" opacity=".35"/>';
+    // rib going down
+    s += '<rect x="' + ribX0 + '" y="' + (showY + wallH) + '" width="' + ribW + '" height="' + (ribBot - showY - wallH) + '" class="d-zone" opacity=".5"/>';
+    s += '<line x1="' + ribX0 + '" y1="' + (showY + wallH) + '" x2="' + ribX0 + '" y2="' + ribBot + '" class="d-soft" stroke-width="1.2"/>';
+    s += '<line x1="' + ribX1 + '" y1="' + (showY + wallH) + '" x2="' + ribX1 + '" y2="' + ribBot + '" class="d-soft" stroke-width="1.2"/>';
+    s += '<text x="' + cx + '" y="' + (ribBot + 12) + '" text-anchor="middle" class="d-softtext" font-size="10">' + t.riblabel + "</text>";
+    // hot-spot inscribed circle at junction
+    var jy = showY + wallH + 2;
+    s += '<circle cx="' + cx + '" cy="' + jy + '" r="' + mass + '" fill="none" stroke-dasharray="3 3" class="' + (over > 0 ? "d-bad" : "d-good") + '" stroke-width="1.6"/>';
+    if (over > 0) s += '<text x="' + (cx + mass + 6) + '" y="' + (jy + 3) + '" class="d-softtext" font-size="9">' + t.hot + "</text>";
+    return s;
+  }
+  // rebuild a box's face sizes when a dimension changes (depth/width live-edited)
+  function rebuildDepth(box, w, h, d) {
+    box.style.width = w + "px"; box.style.height = h + "px";
+    box.style.left = (-w / 2) + "px"; box.style.top = (-h / 2) + "px";
+    var f = box.faces;
+    setFace(f.front, w, h, ((w - w) / 2), ((h - h) / 2), "translateZ(" + (d / 2) + "px)");
+    setFace(f.back, w, h, 0, 0, "translateZ(" + (-d / 2) + "px) rotateY(180deg)");
+    setFace(f.right, d, h, (w - d) / 2, 0, "rotateY(90deg) translateZ(" + (w / 2) + "px)");
+    setFace(f.left, d, h, (w - d) / 2, 0, "rotateY(-90deg) translateZ(" + (w / 2) + "px)");
+    setFace(f.top, w, d, 0, (h - d) / 2, "rotateX(90deg) translateZ(" + (h / 2) + "px)");
+    setFace(f.bottom, w, d, 0, (h - d) / 2, "rotateX(-90deg) translateZ(" + (h / 2) + "px)");
+  }
+  function setFace(f, fw, fh, lx, ty, tf) {
+    f.style.width = fw + "px"; f.style.height = fh + "px";
+    f.style.left = lx + "px"; f.style.top = ty + "px"; f.style.transform = tf;
+  }
+
+  /* ---- Station 2 — Draft & Ejection ------------------------------------ */
+  STATIONS.push({
+    id: "draft", icon: "📐",
+    name: { en: "Draft & Ejection", tr: "Çekme Açısı & İtme" },
+    goal: {
+      en: "Give the molded cup enough draft to eject cleanly. Textured (grained) walls need more. Set the angle, then press EJECT and watch it lift free — or drag and scuff.",
+      tr: "Kalıplanan kaba temiz çıkacak kadar çekme açısı ver. Desenli (grenli) duvarlar daha fazla ister. Açıyı ayarla, sonra ÇIKAR'a bas ve serbestçe kalkmasını izle — ya da sürtüp çizilmesini."
+    },
+    principle: {
+      en: "Zero-draft walls grab the core and drag on ejection. A texture is thousands of tiny undercuts, so it adds required draft — roughly +1° per 0.025 mm of grain depth. Too little draft and the ejectors scuff the surface or stress-whiten the part. Draft is decided on day one, not after the tool is cut.",
+      tr: "Sıfır eğimli duvarlar maçayı kavrar ve itmede sürter. Desen binlerce minik alttan kesmedir; gereken eğimi artırır — kabaca her 0,025 mm gren derinliği için +1°. Yetersiz eğimde iticiler yüzeyi çizer ya da parçayı gerilmeyle beyazlatır. Eğim ilk gün kararlaştırılır, takım kesildikten sonra değil."
+    },
+    build: function (stage, side, lang) {
+      var s3 = scene3d(stage, -12, -28), scene = s3.scene;
+      var draft = 1.0, grain = 0.0, ejecting = false;
+
+      var mold = makeBox(220, 46, 150, "part-mold");
+      mold.place(0, 92, 0);
+      var core = makeBox(96, 96, 96, "part-core");
+      core.place(0, 40, 0);
+      var partW = 150, partH = 96, partD = 110;
+      var part = makeBox(partW, partH, partD, "part-cup");
+      scene.appendChild(mold); scene.appendChild(core); scene.appendChild(part);
+
+      var t = lang === "tr"
+        ? { draft: "Çekme açısı", grain: "Gren derinliği (mm)", req: "Gerekli eğim", margin: "Marj", eject: "⬆ ÇIKAR", reset: "↺ Sıfırla",
+            ok: "Eğim {a}° ≥ gerekli {r}° → parça temiz çıkar.", bad: "Eğim {a}° < gerekli {r}° → parça maçaya sürter, gren çizilir.",
+            base: "temel", grainlbl: "gren" }
+        : { draft: "Draft angle", grain: "Grain depth (mm)", req: "Required draft", margin: "Margin", eject: "⬆ EJECT", reset: "↺ Reset",
+            ok: "Draft {a}° ≥ required {r}° → part lifts free.", bad: "Draft {a}° < required {r}° → part drags on the core, grain scuffs.",
+            base: "base", grainlbl: "grain" };
+
+      var vv = el("div", "studio-verdict");
+      var out = readout([["", ""], ["", ""]]);
+
+      function required() { return 0.5 + grain / 0.025 * 1.0; }
+      function skew(a) {
+        // visually lean the side walls by the draft angle
+        var f = part.faces;
+        f.left.style.transform = "rotateY(-90deg) translateZ(" + (partW / 2) + "px) skewY(" + (a * 3) + "deg)";
+        f.right.style.transform = "rotateY(90deg) translateZ(" + (partW / 2) + "px) skewY(" + (-a * 3) + "deg)";
+      }
+      function recompute() {
+        var req = required();
+        skew(draft);
+        out.set(0, fmt(req, lang, 1) + "°");
+        out.set(1, fmt(draft - req, lang, 1) + "°");
+        var ok = draft >= req - 1e-9;
+        part.classList.toggle("bad", !ok);
+        if (!ejecting) {
+          if (ok) verdict(vv, true, t.ok.replace("{a}", fmt(draft, lang, 1)).replace("{r}", fmt(req, lang, 1)));
+          else verdict(vv, false, t.bad.replace("{a}", fmt(draft, lang, 1)).replace("{r}", fmt(req, lang, 1)));
         }
-      ]
+      }
+      function tween(from, to, ms, step, done) {
+        if (reduced) { step(to); if (done) done(); return; }
+        var t0 = null, raf;
+        function tick(ts) {
+          if (!t0) t0 = ts;
+          var p = Math.min(1, (ts - t0) / ms);
+          var e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          step(from + (to - from) * e);
+          if (p < 1) raf = requestAnimationFrame(tick); else if (done) done();
+        }
+        raf = requestAnimationFrame(tick); cleanups.push(function () { cancelAnimationFrame(raf); });
+      }
+      function eject() {
+        if (ejecting) return; ejecting = true;
+        var ok = draft >= required() - 1e-9;
+        part.classList.remove("scuff");
+        if (ok) {
+          tween(0, -170, 900, function (y) { part.place(0, y, 0); }, function () {
+            tween(-170, 0, 700, function (y) { part.place(0, y, 0); }, function () { ejecting = false; recompute(); });
+          });
+          verdict(vv, true, t.ok.replace("{a}", fmt(draft, lang, 1)).replace("{r}", fmt(required(), lang, 1)));
+        } else {
+          part.classList.add("scuff");
+          tween(0, -46, 260, function (y) { part.place(0, y, 0); }, function () {
+            // shudder then snap back
+            var n = 0;
+            (function shake() {
+              if (n++ > 5) { tween(-46, 0, 260, function (y) { part.place(0, y, 0); }, function () { ejecting = false; recompute(); }); return; }
+              part.place((n % 2 ? 4 : -4), -46, 0); requestAnimationFrame(function () { setTimeout(shake, 55); });
+            })();
+          });
+          verdict(vv, false, t.bad.replace("{a}", fmt(draft, lang, 1)).replace("{r}", fmt(required(), lang, 1)));
+        }
+      }
+
+      var sD = slider(t.draft, 0, 3, 0.1, draft, lang, 1, function (v) { draft = v; recompute(); });
+      var sG = slider(t.grain, 0, 0.05, 0.005, grain, lang, 3, function (v) { grain = v; recompute(); });
+      var btn = el("button", "btn", t.eject); btn.onclick = eject;
+      side.appendChild(sD.el); side.appendChild(sG.el);
+      side.appendChild(btn);
+      side.appendChild(vv); side.appendChild(out);
+      recompute();
+    }
+  });
+
+  /* ---- Station 3 — Thermal Gap ----------------------------------------- */
+  STATIONS.push({
+    id: "thermal", icon: "🌡️",
+    name: { en: "Thermal Gap", tr: "Isıl Boşluk" },
+    goal: {
+      en: "A plastic part sits next to a steel neighbour with a visible gap. Sweep the temperature and watch the plastic grow — keep the gap from slamming shut. Choose where you anchor it.",
+      tr: "Bir plastik parça, görünür bir boşlukla çelik komşusunun yanında duruyor. Sıcaklığı süpür ve plastiğin büyümesini izle — boşluğun kapanmasını engelle. Nereden sabitleyeceğini seç."
+    },
+    principle: {
+      en: "Plastics expand far more than steel (ΔL = α·L·ΔT). Over a long span that relative growth is millimetres — you cannot tolerance it away. Anchor one point and let the rest slide so the growth has a designed direction, and run the gap study hot <em>and</em> cold. Anchoring the centre halves the movement each end sees.",
+      tr: "Plastikler çelikten çok daha fazla genleşir (ΔL = α·L·ΔT). Uzun bir açıklıkta bu bağıl büyüme milimetrelerdir — toleransla yok edemezsiniz. Bir noktayı sabitle, gerisini kaydır ki büyümenin tasarlanmış bir yönü olsun; boşluk etüdünü sıcak <em>ve</em> soğukta koş. Merkezi sabitlemek her ucun gördüğü hareketi yarıya indirir."
+    },
+    build: function (stage, side, lang) {
+      var s3 = scene3d(stage, -16, -30), scene = s3.scene;
+      var mats = {
+        PP: { a: 120, label: "PP" }, ABS: { a: 85, label: "ABS" }, GF: { a: 30, label: "PA6-GF30" }
+      };
+      var matKey = "PP", temp = 20, coldGap = 2.5, length = 800, anchor = "center";
+      var steelA = 12;
+
+      var basePlasticW = 150, boxH = 96, boxD = 120;
+      var plastic = makeBox(basePlasticW, boxH, boxD, "part-plastic");
+      var steel = makeBox(70, boxH, boxD, "part-steel");
+      scene.appendChild(plastic); scene.appendChild(steel);
+
+      var t = lang === "tr"
+        ? { mat: "Malzeme", temp: "Sıcaklık (°C)", gap: "Soğuk boşluk (mm)", len: "Açıklık (mm)", anchor: "Sabitleme",
+            center: "Merkez", far: "Uzak uç", dl: "ΔL (bağıl)", move: "Boşluğa doğru", hot: "Anlık boşluk",
+            ok: "Anlık boşluk {g} mm → temas yok.", touch: "Boşluk {g} mm → çok dar, temas riski.", crash: "ÇARPIŞMA: plastik çeliği eziyor ({g} mm)." }
+        : { mat: "Material", temp: "Temperature (°C)", gap: "Cold gap (mm)", len: "Span (mm)", anchor: "Anchor",
+            center: "Centre", far: "Far end", dl: "ΔL (relative)", move: "Toward gap", hot: "Live gap",
+            ok: "Live gap {g} mm → clear.", touch: "Gap {g} mm → very tight, contact risk.", crash: "COLLISION: plastic crushes the steel ({g} mm)." };
+
+      var vv = el("div", "studio-verdict");
+      var out = readout([["", ""], ["", ""], ["", ""]]);
+      var formula = el("div", "studio-formula");
+
+      var GAPPX = 26; // px per mm of gap (exaggerated so it reads)
+      function recompute() {
+        var a = mats[matKey].a;
+        var dT = temp - 20;
+        var dL = (a - steelA) * 1e-6 * length * dT; // mm, relative to steel
+        var toGap = anchor === "center" ? dL / 2 : dL; // movement of the gap-side end toward steel
+        var liveGap = coldGap - toGap;
+        // colour by temperature (cold blue → hot red), inherited by faces via --tint
+        var warm = clamp((temp + 30) / 110, 0, 1);
+        var r = Math.round(lerp(37, 220, warm)), g = Math.round(lerp(99, 38, warm)), bl = Math.round(lerp(235, 38, warm));
+        plastic.style.setProperty("--tint", "rgba(" + r + "," + g + "," + bl + ",.7)");
+        // steel fixed on the right; plastic grows and its right edge approaches
+        var steelX = 150, steelHalf = 35; // steel box is 70 wide
+        steel.place(steelX, 0, 0);
+        var steelLeft = steelX - steelHalf;
+        var growPx = clamp(dL * GAPPX, -50, 130);   // exaggerated so growth reads
+        var newW = clamp(basePlasticW + growPx, 90, 300);
+        rebuildDepth(plastic, newW, boxH, boxD);
+        var gapPx = liveGap * GAPPX;
+        var rightEdge = steelLeft - Math.max(-14, gapPx); // clamp overlap so a crush stays visible
+        plastic.place(rightEdge - newW / 2, 0, 0);
+        plastic.classList.toggle("bad", liveGap <= 0);
+
+        out.set(0, fmt(dL, lang, 2) + " mm");
+        out.set(1, fmt(toGap, lang, 2) + " mm");
+        out.set(2, fmt(liveGap, lang, 2) + " mm");
+        formula.innerHTML = "ΔL = (" + mats[matKey].a + "−" + steelA + ")·10⁻⁶ × " + length + " × " + fmt(dT, lang, 0) + " = <b>" + fmt(dL, lang, 2) + " mm</b>";
+        if (liveGap <= 0) verdict(vv, false, t.crash.replace("{g}", fmt(liveGap, lang, 2)));
+        else if (liveGap < 0.4) warnV(vv, t.touch.replace("{g}", fmt(liveGap, lang, 2)));
+        else verdict(vv, true, t.ok.replace("{g}", fmt(liveGap, lang, 2)));
+      }
+
+      var segM = seg([{ k: "PP", label: "PP" }, { k: "ABS", label: "ABS" }, { k: "GF", label: "PA6-GF30" }], "PP", function (k) { matKey = k; recompute(); });
+      var segA = seg([{ k: "center", label: t.center }, { k: "far", label: t.far }], "center", function (k) { anchor = k; recompute(); });
+      var sT = slider(t.temp, -30, 80, 1, temp, lang, 0, function (v) { temp = v; recompute(); });
+      var sG = slider(t.gap, 0.5, 6, 0.1, coldGap, lang, 1, function (v) { coldGap = v; recompute(); });
+      var sL = slider(t.len, 100, 1200, 10, length, lang, 0, function (v) { length = v; recompute(); });
+      side.appendChild(labelRow(t.mat, segM.el));
+      side.appendChild(labelRow(t.anchor, segA.el));
+      side.appendChild(sT.el); side.appendChild(sG.el); side.appendChild(sL.el);
+      side.appendChild(vv); side.appendChild(formula); side.appendChild(out);
+      recompute();
+    }
+  });
+
+  /* ---- Station 4 — Pin & Slot locators --------------------------------- */
+  STATIONS.push({
+    id: "locate", icon: "📍",
+    name: { en: "Pin & Slot", tr: "Pim & Yuva" },
+    goal: {
+      en: "Locate a molded panel on two fixture pins. Try two round holes, then a round hole + a slot. Add molding/thermal variation and watch which scheme stays flat and which fights itself into a warp.",
+      tr: "Kalıplanmış bir paneli iki fikstür pimine konumla. Önce iki yuvarlak delik, sonra bir yuvarlak delik + bir yuva dene. Kalıp/ısıl sapma ekle ve hangi şemanın düz kaldığını, hangisinin kendisiyle savaşıp çarpıldığını izle."
+    },
+    principle: {
+      en: "Two round holes on two pins over-constrain the panel: as pitch varies with molding and temperature, the pins fight the holes and the panel bows. The 4-way pin fixes X-Y, a 2-way slot fixes rotation but <em>releases</em> the pin-to-pin distance — exactly where the variation lives. Pin + slot + face pads is the standard plastic-locating scheme.",
+      tr: "İki pime iki yuvarlak delik paneli aşırı kısıtlar: adım, kalıp ve sıcaklıkla değiştikçe pimler deliklerle savaşır ve panel bombeleşir. 4-yön pimi X-Y'yi sabitler; 2-yön yuvası dönmeyi sabitler ama pimden pime mesafeyi <em>serbest bırakır</em> — sapmanın yaşadığı yer tam orası. Pim + yuva + yüzey pedleri standart plastik konumlama şemasıdır."
+    },
+    build: function (stage, side, lang) {
+      var s3 = scene3d(stage, -58, -8), scene = s3.scene;
+      var mode = "pins", varr = 0.15, clearance = 0.2;
+
+      var base = makeBox(240, 20, 150, "part-fixture");
+      base.place(0, 48, 0);
+      var pin1 = makeBox(14, 70, 14, "part-pin"); pin1.place(-80, 6, 0);
+      var pin2 = makeBox(14, 70, 14, "part-pin"); pin2.place(80, 6, 0);
+      var panel = makeBox(240, 12, 150, "part-panel");
+      panel.place(0, 0, 0);
+      scene.appendChild(base); scene.appendChild(pin1); scene.appendChild(pin2);
+      scene.appendChild(panel);
+
+      // top-view SVG of the two features
+      var xsec = svgWrap("", 260, 120);
+      stage.appendChild(xsec);
+
+      var t = lang === "tr"
+        ? { mode: "Konumlama şeması", pins: "2 yuvarlak delik", pinslot: "Delik + yuva",
+            varr: "Kalıp/ısıl sapma (mm)", clr: "Delik boşluğu (mm)",
+            ok: "Sapma {v} mm boşlukta soğrulur → panel düz oturur.", warp: "Aşırı kısıt: sapma {v} mm > boşluk {c} mm → panel çarpılır.",
+            slotok: "Yuva pimden-pime mesafeyi serbest bırakır → sapma ne olursa olsun düz.",
+            hole: "delik", slot: "yuva", pin: "pim" }
+        : { mode: "Locating scheme", pins: "2 round holes", pinslot: "Hole + slot",
+            varr: "Molding/thermal variation (mm)", clr: "Hole clearance (mm)",
+            ok: "Variation {v} mm absorbed by clearance → panel seats flat.", warp: "Over-constrained: variation {v} mm > clearance {c} mm → panel warps.",
+            slotok: "The slot releases the pin-to-pin distance → flat at any variation.",
+            hole: "hole", slot: "slot", pin: "pin" };
+
+      var vv = el("div", "studio-verdict");
+
+      function recompute() {
+        var overc = mode === "pins" && varr > clearance;
+        var bow = overc ? clamp((varr - clearance) * 60, 0, 26) : 0;
+        // warp the panel: lift one side + arch via rotateX
+        if (bow > 0) {
+          panel.place(0, -bow * 0.3, 0, "rotateZ(" + (bow * 0.16) + "deg) rotateX(" + (bow * 0.12) + "deg)");
+          panel.classList.add("bad");
+        } else {
+          panel.place(0, 0, 0);
+          panel.classList.remove("bad");
+        }
+        xsec.querySelector("svg").innerHTML = topView(mode, varr, clearance, t);
+        if (mode === "pinslot") verdict(vv, true, t.slotok);
+        else if (overc) verdict(vv, false, t.warp.replace("{v}", fmt(varr, lang, 2)).replace("{c}", fmt(clearance, lang, 2)));
+        else verdict(vv, true, t.ok.replace("{v}", fmt(varr, lang, 2)));
+      }
+
+      var segMode = seg([{ k: "pins", label: t.pins }, { k: "pinslot", label: t.pinslot }], "pins", function (k) { mode = k; recompute(); });
+      var sV = slider(t.varr, 0, 0.6, 0.01, varr, lang, 2, function (v) { varr = v; recompute(); });
+      var sC = slider(t.clr, 0.05, 0.4, 0.01, clearance, lang, 2, function (v) { clearance = v; recompute(); });
+      side.appendChild(labelRow(t.mode, segMode.el));
+      side.appendChild(sV.el); side.appendChild(sC.el);
+      side.appendChild(vv);
+      recompute();
+    }
+  });
+
+  function topView(mode, varr, clr, t) {
+    var W = 260, H = 120, y = 60, x1 = 70, x2 = 190, off = varr * 60;
+    var s = "";
+    s += '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" class="d-soft" stroke-dasharray="5 4" stroke-width="1.2"/>';
+    // pins (nominal)
+    [x1, x2].forEach(function (px) {
+      s += '<circle cx="' + px + '" cy="' + y + '" r="4" class="d-accentfill"/>';
+    });
+    // hole 1 (round, on pin 1)
+    s += '<circle cx="' + x1 + '" cy="' + y + '" r="12" fill="none" class="d-stroke" stroke-width="2"/>';
+    s += '<text x="' + x1 + '" y="' + (y + 30) + '" text-anchor="middle" class="d-softtext" font-size="10">' + t.hole + "</text>";
+    // feature 2 depends on mode; the required pin position shifts by variation
+    var pin2x = x2 + off;
+    if (mode === "pins") {
+      s += '<circle cx="' + x2 + '" cy="' + y + '" r="12" fill="none" class="' + (Math.abs(off) > clr * 60 ? "d-bad" : "d-stroke") + '" stroke-width="2"/>';
+      s += '<circle cx="' + pin2x + '" cy="' + y + '" r="4" class="d-accentfill"/>';
+      s += '<text x="' + x2 + '" y="' + (y + 30) + '" text-anchor="middle" class="d-softtext" font-size="10">' + t.hole + "</text>";
+      if (Math.abs(off) > clr * 60)
+        s += '<line x1="' + x2 + '" y1="' + (y - 20) + '" x2="' + pin2x + '" y2="' + (y - 20) + '" class="d-bad" stroke-width="1.4" marker-end="url(#tvA)"/>';
+    } else {
+      // slot: stadium elongated along the pitch direction
+      var sw = 40;
+      s += '<rect x="' + (x2 - sw / 2) + '" y="' + (y - 12) + '" width="' + sw + '" height="24" rx="12" fill="none" class="d-good" stroke-width="2"/>';
+      s += '<circle cx="' + clamp(pin2x, x2 - sw / 2 + 4, x2 + sw / 2 - 4) + '" cy="' + y + '" r="4" class="d-accentfill"/>';
+      s += '<text x="' + x2 + '" y="' + (y + 30) + '" text-anchor="middle" class="d-softtext" font-size="10">' + t.slot + "</text>";
+    }
+    s += '<defs><marker id="tvA" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7z" class="d-badfill"/></marker></defs>';
+    return s;
+  }
+
+  /* ---- Station 5 — Fastener & Position --------------------------------- */
+  STATIONS.push({
+    id: "fastener", icon: "🔩", no3d: true,
+    name: { en: "Fastener & Position", tr: "Bağlantı & Pozisyon" },
+    goal: {
+      en: "Turn a bolted joint into a position tolerance. Slide the hole and bolt sizes; the clearance becomes the position zone Ⓜ. Switch between a floating joint (bolt through both parts) and a fixed one (thread anchored in one).",
+      tr: "Cıvatalı bir bağlantıyı pozisyon toleransına çevir. Delik ve cıvata ölçülerini kaydır; boşluk, pozisyon bölgesi Ⓜ olur. Yüzer bağlantı (cıvata her iki parçadan geçer) ile sabit bağlantı (diş bir parçaya sabit) arasında geçiş yap."
+    },
+    principle: {
+      en: "The clearance between hole and fastener is exactly the position tolerance you can afford. Floating (both parts clear): T = H − F, split between the two parts. Fixed (one part threaded): T = (H − F)/2. Apply it at MMC (Ⓜ) so the part earns bonus tolerance as the hole grows — this is why molded holes get generous clearance.",
+      tr: "Delik ile bağlantı elemanı arasındaki boşluk, tam olarak verebileceğiniz pozisyon toleransıdır. Yüzer (her iki parça boşluklu): T = H − F, iki parça arasında bölünür. Sabit (bir parça dişli): T = (H − F)/2. Ⓜ (MMC) ile uygula ki delik büyüdükçe parça bonus tolerans kazansın — kalıplanmış deliklere cömert boşluk verilmesinin nedeni budur."
+    },
+    build: function (stage, side, lang) {
+      var kind = "floating", H = 8.5, F = 8.0;
+      var xsec = svgWrap("", 340, 220);
+      stage.appendChild(xsec);
+      var fcf = el("div", "studio-fcf");
+      var vv = el("div", "studio-verdict");
+      var t = lang === "tr"
+        ? { kind: "Bağlantı tipi", floating: "Yüzer (iki delik)", fixed: "Sabit (dişli)",
+            hole: "Delik MMC ⌀ (mm)", bolt: "Eleman MMC ⌀ (mm)",
+            fF: "Yüzer: T = H − F = {H} − {F} = ⌀{T}", fX: "Sabit: T = (H − F)/2 = ({H} − {F})/2 = ⌀{T}",
+            ok: "Pozisyon toleransı ⌀{T} — her parçaya Ⓜ ile uygulanır.", none: "Boşluk yok: T = ⌀0 → montaj kesişimi." }
+        : { kind: "Joint type", floating: "Floating (2 clear holes)", fixed: "Fixed (threaded)",
+            hole: "Hole MMC ⌀ (mm)", bolt: "Fastener MMC ⌀ (mm)",
+            fF: "Floating: T = H − F = {H} − {F} = ⌀{T}", fX: "Fixed: T = (H − F)/2 = ({H} − {F})/2 = ⌀{T}",
+            ok: "Position tolerance ⌀{T} — applied at Ⓜ on each part.", none: "No clearance: T = ⌀0 → assembly interference." };
+
+      function recompute() {
+        if (F > H) F = H;
+        var T = kind === "floating" ? (H - F) : (H - F) / 2;
+        xsec.querySelector("svg").innerHTML = fastXsec(H, F, T, kind);
+        fcf.innerHTML = fcfBox(T, lang);
+        var line = (kind === "floating" ? t.fF : t.fX)
+          .replace("{H}", fmt(H, lang, 1)).replace("{F}", fmt(F, lang, 1)).replace("{T}", fmt(T, lang, 2));
+        if (T <= 0) verdict(vv, false, t.none);
+        else verdict(vv, true, line);
+      }
+      var segK = seg([{ k: "floating", label: t.floating }, { k: "fixed", label: t.fixed }], "floating", function (k) { kind = k; recompute(); });
+      var sH = slider(t.hole, 6.5, 12, 0.1, H, lang, 1, function (v) { H = v; recompute(); });
+      var sF = slider(t.bolt, 5, 11, 0.1, F, lang, 1, function (v) { F = v; recompute(); });
+      side.appendChild(labelRow(t.kind, segK.el));
+      side.appendChild(sH.el); side.appendChild(sF.el);
+      side.appendChild(vv); side.appendChild(fcf);
+      recompute();
+    }
+  });
+
+  function fastXsec(H, F, T, kind) {
+    var W = 340, HH = 220, cx = 170, scale = 12;
+    var holeR = H * scale / 2, boltR = F * scale / 2, zoneR = Math.max(2, T * scale / 2);
+    var pT = 46, pB = 128, plate1 = [pT, 78], plate2 = [86, pB];
+    var s = "";
+    // plates
+    s += '<rect x="40" y="' + plate1[0] + '" width="260" height="' + (plate1[1] - plate1[0]) + '" class="d-zone" opacity=".28"/>';
+    s += '<rect x="40" y="' + plate2[0] + '" width="260" height="' + (plate2[1] - plate2[0]) + '" class="d-zone" opacity=".18"/>';
+    s += '<rect x="40" y="' + plate1[0] + '" width="260" height="' + (plate2[1] - plate1[0]) + '" fill="none" class="d-soft" stroke-width="1.2"/>';
+    // hole walls (both plates for floating; lower plate threaded for fixed)
+    s += '<line x1="' + (cx - holeR) + '" y1="' + plate1[0] + '" x2="' + (cx - holeR) + '" y2="' + plate1[1] + '" class="d-stroke" stroke-width="1.6"/>';
+    s += '<line x1="' + (cx + holeR) + '" y1="' + plate1[0] + '" x2="' + (cx + holeR) + '" y2="' + plate1[1] + '" class="d-stroke" stroke-width="1.6"/>';
+    if (kind === "floating") {
+      s += '<line x1="' + (cx - holeR) + '" y1="' + plate2[0] + '" x2="' + (cx - holeR) + '" y2="' + plate2[1] + '" class="d-stroke" stroke-width="1.6"/>';
+      s += '<line x1="' + (cx + holeR) + '" y1="' + plate2[0] + '" x2="' + (cx + holeR) + '" y2="' + plate2[1] + '" class="d-stroke" stroke-width="1.6"/>';
+    } else {
+      // thread hatch
+      for (var yy = plate2[0]; yy < plate2[1]; yy += 6) {
+        s += '<line x1="' + (cx - boltR) + '" y1="' + yy + '" x2="' + (cx - boltR + 4) + '" y2="' + (yy + 4) + '" class="d-soft" stroke-width="1"/>';
+        s += '<line x1="' + (cx + boltR - 4) + '" y1="' + yy + '" x2="' + (cx + boltR) + '" y2="' + (yy + 4) + '" class="d-soft" stroke-width="1"/>';
+      }
+    }
+    // bolt
+    var bTop = 22;
+    s += '<rect x="' + (cx - boltR) + '" y="' + bTop + '" width="' + (2 * boltR) + '" height="' + (pB - bTop) + '" class="d-accent" fill="none" stroke-width="1.8"/>';
+    s += '<rect x="' + (cx - boltR - 10) + '" y="' + (bTop) + '" width="' + (2 * boltR + 20) + '" height="12" class="d-accentfill" opacity=".55"/>';
+    // clearance shading (hole minus bolt), each side
+    if (H > F) {
+      s += '<rect x="' + (cx - holeR) + '" y="' + plate1[0] + '" width="' + (holeR - boltR) + '" height="' + (plate1[1] - plate1[0]) + '" class="d-badfill" opacity=".35"/>';
+      s += '<rect x="' + (cx + boltR) + '" y="' + plate1[0] + '" width="' + (holeR - boltR) + '" height="' + (plate1[1] - plate1[0]) + '" class="d-badfill" opacity=".35"/>';
+    }
+    // position zone at bottom axis
+    var zy = 176;
+    s += '<line x1="40" y1="' + zy + '" x2="300" y2="' + zy + '" class="d-soft" stroke-dasharray="4 4" stroke-width="1"/>';
+    s += '<line x1="' + cx + '" y1="' + (zy - 24) + '" x2="' + cx + '" y2="' + (zy + 12) + '" class="d-soft" stroke-dasharray="3 3" stroke-width="1"/>';
+    s += '<circle cx="' + cx + '" cy="' + zy + '" r="' + zoneR + '" class="d-zone" stroke-width="1.6"/>';
+    s += '<text x="' + (cx + zoneR + 8) + '" y="' + (zy + 4) + '" class="d-softtext" font-size="11">⌀' + T.toFixed(2) + '</text>';
+    return s;
+  }
+  function fcfBox(T, lang) {
+    if (window.GDT_SVG && GDT_SVG.fcf)
+      return GDT_SVG.fcf([[{ sym: "position" }], ["⌀" + T.toFixed(2), { mod: "M" }], ["A"], ["B"], ["C"]]);
+    return '<span class="fcf"><span class="fcf-cell">⌖</span><span class="fcf-cell">⌀' + T.toFixed(2) + " Ⓜ</span></span>";
+  }
+
+  function labelRow(label, node) {
+    var w = el("div", "studio-labelrow");
+    w.appendChild(el("div", "studio-label", label));
+    w.appendChild(node);
+    return w;
+  }
+
+  /* ======================================================================
+   *  UI strings + page render
+   * ==================================================================== */
+  var UI = {
+    en: {
+      navLabel: "Design Studio",
+      title: "🧪 Plastic Design Bench",
+      intro: "A hands-on studio — no quizzes. Each station is a live rig: grab the 3D part to orbit it, then move the sliders and watch the consequence of your design choice happen in real time — sink marks, ejection scuffs, thermal collisions, over-constraint warp, and fastener position zones.",
+      principle: "Why it works",
+      drag: "drag to orbit"
+    },
+    tr: {
+      navLabel: "Tasarım Stüdyosu",
+      title: "🧪 Plastik Tasarım Tezgahı",
+      intro: "Uygulamalı bir stüdyo — quiz yok. Her istasyon canlı bir düzenek: 3B parçayı tutup döndür, sonra kaydırıcıları oynat ve tasarım kararının sonucunu gerçek zamanlı izle — çöküntü izleri, itme çizikleri, ısıl çarpışmalar, aşırı kısıt çarpılması ve bağlantı pozisyon bölgeleri.",
+      principle: "Neden böyle",
+      drag: "döndürmek için sürükle"
     }
   };
 
-  /* ---------- state (shared across languages; parts arrays are parallel) ---------- */
-  var S = { pi: null, step: 0, answered: false, picks: [], score: 0, calc: null, done: false };
-  var CSET = [0.5, 0.6, 0.8, 1.0];
+  var active = 0, mountEl = null, mountLang = "en";
 
-  function fmt(n, lang, dp) {
-    var s = n.toFixed(dp == null ? 2 : dp);
-    return lang === "tr" ? s.replace(".", ",") : s;
-  }
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function renderAll(container, lang) {
+    runCleanups();
+    var ui = UI[lang] || UI.en;
+    container.innerHTML = "";
+    container.appendChild(el("h1", null, ui.title));
+    container.appendChild(el("p", "lesson-intro", ui.intro));
 
-  function newScenario() {
-    var n = DATA.en.parts.length;
-    var pi;
-    do { pi = Math.floor(Math.random() * n); } while (n > 1 && pi === S.pi);
-    S.pi = pi; S.step = 0; S.answered = false; S.picks = []; S.score = 0; S.done = false;
-    // pre-roll the calc values for this scenario (same in both languages)
-    var part = DATA.en.parts[pi];
-    var calcStep = null;
-    part.steps.forEach(function (st) { if (st.t === "calc") calcStep = st; });
-    if (calcStep) {
-      var F = calcStep.Fset[Math.floor(Math.random() * calcStep.Fset.length)];
-      var c = CSET[Math.floor(Math.random() * CSET.length)];
-      var T = calcStep.kind === "floating" ? c : c / 2;
-      var opts = calcStep.kind === "floating" ? [T, T / 2, T * 2, c + 0.25] : [T, T / 2, c, c * 2];
-      // shuffle once, remember the correct slot
-      for (var i = opts.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var t2 = opts[i]; opts[i] = opts[j]; opts[j] = t2;
-      }
-      S.calc = { F: F, c: c, T: T, opts: opts, a: opts.indexOf(T) };
-    } else S.calc = null;
-  }
-
-  function calcQuestion(ui, kind, lang) {
-    var H = S.calc.F + S.calc.c;
-    var tpl = kind === "floating" ? ui.calcFloatQ : ui.calcFixedQ;
-    var ex = kind === "floating" ? ui.calcFloatEx : ui.calcFixedEx;
-    function fill(s) {
-      return s.split("{F}").join(S.calc.F).split("{H}").join(fmt(H, lang, 1)).split("{T}").join(fmt(S.calc.T, lang));
-    }
-    return {
-      q: fill(tpl),
-      opts: S.calc.opts.map(function (v) { return "⌀" + fmt(v, lang); }),
-      a: S.calc.a,
-      ex: fill(ex)
-    };
-  }
-
-  function stepData(ui, part, si, lang) {
-    var st = part.steps[si];
-    if (st.t === "calc") {
-      var c = calcQuestion(ui, st.kind, lang);
-      return { topic: st.topic, q: c.q, opts: c.opts, a: c.a, ex: c.ex };
-    }
-    return { topic: st.topic, q: st.q, opts: st.opts, a: st.a, ex: st.ex };
-  }
-
-  /* ---------- rendering ---------- */
-  var mountEl = null, mountLang = "en";
-
-  function html(lang) {
-    var L = DATA[lang] || DATA.en;
-    var ui = L.ui;
-    var h = "<h1>" + ui.title + "</h1><p class='lesson-intro'>" + ui.intro + "</p>";
-    if (S.pi == null) {
-      h += '<button class="btn" id="trNew">' + ui.newPart + "</button>";
-      return h;
-    }
-    var part = L.parts[S.pi];
-    var total = part.steps.length;
-
-    h += '<div class="tr-head"><span class="tr-emoji">' + part.icon + "</span><div>" +
-      "<h3>" + esc(part.name) + '</h3><span class="pill">' + ui.processWord + ": " + esc(part.process) + "</span></div>" +
-      '<button class="btn secondary" id="trNew" style="margin-left:auto">' + ui.anotherPart + "</button></div>";
-    h += '<div class="box key"><div class="box-title">' + ui.briefTitle + "</div><p>" + esc(part.brief) + "</p></div>";
-
-    h += "<h2>" + ui.envTitle + "</h2>";
-    h += '<div class="tbl-wrap"><table><thead><tr>';
-    ui.envHeads.forEach(function (x) { h += "<th>" + x + "</th>"; });
-    h += "</tr></thead><tbody>";
-    part.env.forEach(function (r) {
-      h += "<tr><td><strong>" + esc(r[0]) + "</strong></td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>";
+    var tabs = el("div", "studio-tabs");
+    STATIONS.forEach(function (st, i) {
+      var b = el("button", "studio-tab" + (i === active ? " on" : ""), st.icon + " " + st.name[lang]);
+      b.onclick = function () { active = i; renderAll(container, lang); };
+      tabs.appendChild(b);
     });
-    h += "</tbody></table></div>";
+    container.appendChild(tabs);
 
-    var shown = Math.min(S.step + 1, total);
-    h += '<div class="tr-progress"><i style="width:' + Math.round(100 * (S.step + (S.answered ? 1 : 0)) / total) + '%"></i></div>';
+    var body = el("div", "studio-body");
+    container.appendChild(body);
 
-    for (var si = 0; si < shown; si++) {
-      var d = stepData(ui, part, si, lang);
-      var answered = si < S.step || (si === S.step && S.answered);
-      var pick = S.picks[si];
-      h += '<div class="quiz-q tr-step' + (answered ? " graded" : "") + '" data-step="' + si + '">' +
-        '<div class="tr-topic">' + ui.topics[d.topic] + "</div>" +
-        '<div class="quiz-q-title">' + ui.stepWord + " " + (si + 1) + " / " + total + " — " + esc(d.q) + "</div>";
-      d.opts.forEach(function (opt, oi) {
-        var cls = "quiz-opt";
-        if (answered) {
-          if (oi === d.a) cls += " correct";
-          else if (oi === pick) cls += " wrong";
-        }
-        h += '<label class="' + cls + '" data-o="' + oi + '"><input type="radio"' +
-          (answered ? " disabled" + (oi === pick ? " checked" : "") : "") + "><span>" + esc(opt) + "</span></label>";
-      });
-      h += '<div class="quiz-explain">💡 ' + esc(d.ex) + "</div></div>";
-    }
+    var st = STATIONS[active];
+    body.appendChild(el("div", "studio-goal", "🎯 " + st.goal[lang]));
+    var grid = el("div", "studio-grid");
+    var stage = el("div", "studio-stage");
+    if (!st.no3d) stage.appendChild(el("div", "studio-drag", "🖐 " + ui.drag));
+    var sidep = el("div", "studio-side");
+    grid.appendChild(stage); grid.appendChild(sidep);
+    body.appendChild(grid);
+    var note = el("div", "box key studio-note", '<div class="box-title">💡 ' + ui.principle + "</div><p>" + st.principle[lang] + "</p>");
+    body.appendChild(note);
 
-    if (S.answered && !S.done) {
-      var last = S.step === total - 1;
-      h += '<button class="btn" id="trNext">' + (last ? ui.finish : ui.next) + "</button>";
-    }
-
-    if (S.done) {
-      var passed = S.score >= Math.ceil(total * 0.8);
-      h += '<div class="quiz-result ' + (passed ? "pass" : "fail") + '" style="display:flex">' +
-        (passed ? "🎉 " + ui.resultPass : "🔁 " + ui.resultFail) +
-        ' <span class="exam-score-big" style="margin-left:auto">' + S.score + "/" + total + "</span></div>";
-      h += '<div class="box key" style="margin-top:16px"><div class="box-title">' + ui.takeaways + "</div><ul>";
-      part.tips.forEach(function (t) { h += "<li>" + esc(t) + "</li>"; });
-      h += "</ul></div>";
-      h += '<button class="btn" id="trNew2">' + ui.anotherPart + "</button>";
-    }
-    return h;
-  }
-
-  function bind() {
-    var root = mountEl;
-    var lang = mountLang;
-    var L = DATA[lang] || DATA.en;
-    ["trNew", "trNew2"].forEach(function (id) {
-      var b = root.querySelector("#" + id);
-      if (b) b.onclick = function () { newScenario(); redraw(); };
-    });
-    var next = root.querySelector("#trNext");
-    if (next) next.onclick = function () {
-      var total = L.parts[S.pi].steps.length;
-      if (S.step === total - 1) S.done = true;
-      else { S.step++; S.answered = false; }
-      redraw();
-    };
-    if (S.pi == null || S.answered || S.done) return;
-    var stepEl = root.querySelector('[data-step="' + S.step + '"]');
-    if (!stepEl) return;
-    stepEl.querySelectorAll(".quiz-opt").forEach(function (optEl) {
-      optEl.addEventListener("click", function (e) {
-        if (S.answered) return;
-        e.preventDefault();
-        var oi = parseInt(optEl.getAttribute("data-o"), 10);
-        var d = stepData(L.ui, L.parts[S.pi], S.step, lang);
-        S.picks[S.step] = oi;
-        if (oi === d.a) S.score++;
-        S.answered = true;
-        redraw();
-      });
-    });
-  }
-
-  function redraw() {
-    if (!mountEl) return;
-    mountEl.innerHTML = html(mountLang);
-    bind();
-    var btn = mountEl.querySelector("#trNext");
-    if (btn) btn.scrollIntoView({ behavior: "smooth", block: "center" });
+    st.build(stage, sidep, lang);
   }
 
   window.GDT_TRAINER = {
-    ui: function (lang) { return (DATA[lang] || DATA.en).ui; },
+    ui: function (lang) { return UI[lang] || UI.en; },
     mount: function (container, lang) {
       mountEl = container; mountLang = lang;
-      container.innerHTML = html(lang);
-      bind();
+      renderAll(container, lang);
     }
   };
 })();

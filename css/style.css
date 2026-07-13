@@ -348,27 +348,110 @@ td .sym-icon { vertical-align: middle; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 
-/* ---------- Design Studio (trainer) ---------- */
-.tr-head {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow);
-  margin: 14px 0 18px; animation: popIn .3s ease both;
+/* ---------- Design Studio — interactive 3D bench ---------- */
+.studio-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.studio-tab {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-soft); font-weight: 600;
+  cursor: pointer; font-size: .85rem; transition: all .15s;
 }
-.tr-emoji { font-size: 2.4rem; line-height: 1; }
-.tr-head h3 { margin: 0 0 6px; border: 0; padding: 0; }
-.tr-progress {
-  height: 6px; background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 999px; overflow: hidden; margin: 18px 0;
+.studio-tab:hover { border-color: var(--accent); }
+.studio-tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.studio-goal {
+  background: var(--accent-soft); color: var(--accent-dark); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 16px; font-size: .92rem;
 }
-.tr-progress i { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
-.tr-topic {
-  display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; color: var(--accent-dark); background: var(--surface-2);
-  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; margin-bottom: 10px;
+.studio-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; align-items: start; }
+.studio-stage {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; min-height: 340px; overflow: hidden;
 }
-.tr-step.graded .quiz-explain { display: block; }
-.tr-step .quiz-opt { user-select: none; }
+.studio-drag { position: absolute; top: 8px; left: 10px; font-size: .72rem; color: var(--text-soft); opacity: .75; pointer-events: none; z-index: 2; }
+.studio-side { display: flex; flex-direction: column; gap: 14px; }
+.studio-note { margin-top: 18px; }
+
+/* segmented toggle + labelled rows */
+.studio-labelrow { display: flex; flex-direction: column; gap: 6px; }
+.studio-label { font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+.studio-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; align-self: flex-start; flex-wrap: wrap; }
+.studio-seg-btn {
+  padding: 6px 12px; background: var(--surface); border: none; border-right: 1px solid var(--border);
+  cursor: pointer; color: var(--text-soft); font-size: .78rem; font-weight: 600;
+}
+.studio-seg-btn:last-child { border-right: none; }
+.studio-seg-btn.on { background: var(--accent); color: #fff; }
+
+.studio-verdict { padding: 10px 12px; border-radius: 8px; font-weight: 600; font-size: .9rem; background: var(--surface); border: 1px solid var(--border); }
+.studio-verdict.pass { background: var(--good-soft); color: var(--good); border-color: var(--good); }
+.studio-verdict.fail { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+.studio-verdict.warn { background: var(--warn-soft); color: var(--warn-border); border-color: var(--warn-border); }
+
+.studio-readout { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.studio-rd { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; border-bottom: 1px dashed var(--border); padding: 3px 0; }
+.studio-rd-k { color: var(--text-soft); }
+.studio-rd-v { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent-dark); }
+.studio-formula { font-size: .82rem; background: var(--code-bg); border-radius: 8px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
+.studio-fcf { display: flex; }
+.studio-svg svg { max-width: 100%; height: auto; }
+
+/* ---- 3D scene (pure CSS transforms) ---- */
+.st3d {
+  position: relative; height: 300px; width: 100%; perspective: 900px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.st3d.grabbing { cursor: grabbing; }
+.st3d-scene { position: relative; width: 0; height: 0; transform-style: preserve-3d; transition: transform .05s linear; }
+.st3d-hint { position: absolute; right: 12px; bottom: 8px; font-size: 1.15rem; color: var(--text-soft); opacity: .55; animation: spinhint 3.2s linear infinite; pointer-events: none; }
+.st3d.touched .st3d-hint { display: none; }
+@keyframes spinhint { to { transform: rotate(360deg); } }
+
+.b3d { position: absolute; transform-style: preserve-3d; }
+.b3d-face {
+  position: absolute; border: 1px solid rgba(120, 140, 170, .55);
+  background: rgba(150, 170, 200, .30); box-sizing: border-box;
+}
+
+/* Station 1 — slab + rib + sink */
+.part-slab .b3d-face { background: rgba(210, 220, 235, .5); border-color: rgba(120, 140, 170, .6); }
+.part-slab .f-front { background: linear-gradient(135deg, rgba(235, 242, 252, .92), rgba(200, 214, 236, .85)); }
+.sink-mark {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgba(20, 30, 50, .6), rgba(20, 30, 50, 0) 70%);
+}
+.part-rib .b3d-face { background: rgba(96, 130, 180, .55); border-color: rgba(70, 100, 150, .7); }
+
+/* Station 2 — mold / core / cup */
+.part-mold .b3d-face { background: rgba(38, 48, 68, .9); border-color: #1c2436; }
+.part-core .b3d-face { background: rgba(120, 132, 156, .65); border-color: #6b7690; }
+.part-cup .b3d-face { background: rgba(96, 165, 250, .42); border-color: var(--accent); }
+.part-cup.bad .b3d-face { border-color: var(--bad); }
+.part-cup.scuff .f-left, .part-cup.scuff .f-right, .part-cup.scuff .f-front {
+  background: repeating-linear-gradient(115deg, rgba(220, 38, 38, .6) 0 3px, rgba(96, 165, 250, .42) 3px 9px);
+}
+
+/* Station 3 — plastic (temperature tint) vs steel */
+.part-plastic .b3d-face { background: var(--tint, rgba(37, 99, 235, .65)); border-color: rgba(255, 255, 255, .3); }
+.part-plastic.bad .b3d-face { border-color: var(--bad); box-shadow: inset 0 0 0 2px var(--bad); }
+.part-steel .b3d-face { background: linear-gradient(135deg, rgba(190, 198, 210, .85), rgba(140, 150, 166, .8)); border-color: #5a6270; }
+
+/* Station 4 — fixture / pins / panel */
+.part-fixture .b3d-face { background: rgba(58, 68, 90, .82); border-color: #2b3450; }
+.part-pin .b3d-face { background: rgba(234, 179, 8, .82); border-color: #a16207; }
+.part-panel .b3d-face { background: rgba(96, 165, 250, .4); border-color: var(--accent); transition: background .2s, border-color .2s; }
+.part-panel.bad .b3d-face { background: rgba(220, 38, 38, .42); border-color: var(--bad); }
+
+/* extra SVG fills for markers */
+.diagram svg .d-badfill, .widget-stage svg .d-badfill { fill: var(--bad); }
+.diagram svg .d-goodfill, .widget-stage svg .d-goodfill { fill: var(--good); }
+
+@media (max-width: 820px) {
+  .studio-grid { grid-template-columns: 1fr; }
+  .st3d { height: 260px; }
+}
 
 /* ---------- Page animations ---------- */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
